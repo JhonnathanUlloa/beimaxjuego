@@ -1,0 +1,22 @@
+# Dependencias necesarias para el servidor API
+
+flask==3.0.0
+flask-cors==4.0.0
+pillow==10.1.0
+numpy==1.26.2
+
+# Opcional: para procesamiento de imágenes más avanzado
+# opencv-python==4.8.1.78
+
+# Opcional: para modelos de IA
+# torch==2.1.1
+# torchvision==0.16.1
+# tensorflow==2.15.0
+
+# Opcional: para traducción
+# googletrans==4.0.0-rc1
+# deep-translator==1.11.4
+
+# Opcional: para text-to-speech
+# gtts==2.4.0
+# pyttsx3==2.90

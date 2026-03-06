@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beimax - Aprende Idiomas</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ==================== PANTALLA LOGIN ==================== -->
+    <div id="authScreen" class="screen active">
+        <div class="auth-wrapper">
+            <div class="auth-hero">
+                <div class="robot-container">
+                    <div class="robot large">
+                        <div class="robot-antenna"></div>
+                        <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                        <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                        <div class="robot-head">
+                            <div class="robot-ear ear-left"></div>
+                            <div class="robot-ear ear-right"></div>
+                            <div class="robot-visor"></div>
+                            <div class="robot-eyes">
+                                <div class="eye left"></div>
+                                <div class="eye right"></div>
+                            </div>
+                        </div>
+                        <div class="robot-neck"></div>
+                        <div class="robot-body">
+                            <div class="robot-chest-plate"></div>
+                            <div class="robot-panel-line"></div>
+                        </div>
+                        <div class="robot-waist"></div>
+                        <div class="robot-legs">
+                            <div class="robot-leg leg-left"><div class="robot-foot"></div></div>
+                            <div class="robot-leg leg-right"><div class="robot-foot"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <h1 class="auth-main-title">¡Hola! Soy Beimax</h1>
+                <p class="auth-subtitle">Tu asistente para aprender idiomas</p>
+            </div>
+            <div class="auth-container">
+                <!-- Login -->
+                <div id="loginForm" class="auth-form">
+                    <h3 class="auth-title">Iniciar Sesión</h3>
+                    <div class="form-group">
+                        <label>Usuario</label>
+                        <input type="text" id="loginUsername" placeholder="Tu nombre de usuario" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="handleLogin()">Entrar</button>
+                    <div class="auth-switch">
+                        ¿No tienes cuenta? <button onclick="showRegisterForm()">Regístrate</button>
+                    </div>
+                </div>
+                <!-- Register -->
+                <div id="registerForm" class="auth-form" style="display: none;">
+                    <h3 class="auth-title">Crear Cuenta</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Usuario</label>
+                            <input type="text" id="registerUsername" placeholder="Nombre de usuario" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="registerEmail" placeholder="tu@email.com" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre del personaje</label>
+                            <input type="text" id="registerCharName" placeholder="Ej: BeiBot" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Edad</label>
+                            <input type="number" id="registerAge" placeholder="Edad" min="5" max="99" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Género</label>
+                        <div class="gender-selector">
+                            <button class="gender-btn" data-gender="male" onclick="selectGender('male')">
+                                <span class="gender-icon">🧑</span>
+                                <span>Hombre</span>
+                            </button>
+                            <button class="gender-btn" data-gender="female" onclick="selectGender('female')">
+                                <span class="gender-icon">👩</span>
+                                <span>Mujer</span>
+                            </button>
+                            <button class="gender-btn" data-gender="other" onclick="selectGender('other')">
+                                <span class="gender-icon">🤖</span>
+                                <span>Otro</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Robot</label>
+                        <div class="robot-type-selector register-robot-selector">
+                            <button type="button" class="robot-type-btn selected" data-robot="classic" onclick="selectRobotType('classic')">
+                                <div class="robot-type-preview">
+                                    <div class="robot-mini-body">
+                                        <div class="robot-mini-head">
+                                            <div class="robot-mini-eye left"></div>
+                                            <div class="robot-mini-eye right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="robot-mini-legs"><div class="robot-mini-leg"></div><div class="robot-mini-leg"></div></div>
+                                </div>
+                                <span>Clásico</span>
+                            </button>
+                            <button type="button" class="robot-type-btn" data-robot="athletic" onclick="selectRobotType('athletic')">
+                                <div class="robot-type-preview">
+                                    <div class="robot-mini-body">
+                                        <div class="robot-mini-head">
+                                            <div class="robot-mini-eye left"></div>
+                                            <div class="robot-mini-eye right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="robot-mini-legs"><div class="robot-mini-leg"></div><div class="robot-mini-leg"></div></div>
+                                </div>
+                                <span>💪 Fuerte</span>
+                            </button>
+                            <button type="button" class="robot-type-btn" data-robot="slim" onclick="selectRobotType('slim')">
+                                <div class="robot-type-preview">
+                                    <div class="robot-mini-body">
+                                        <div class="robot-mini-head">
+                                            <div class="robot-mini-eye left"></div>
+                                            <div class="robot-mini-eye right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="robot-mini-legs"><div class="robot-mini-leg"></div><div class="robot-mini-leg"></div></div>
+                                </div>
+                                <span>🌸 Femenina</span>
+                            </button>
+                            <button type="button" class="robot-type-btn" data-robot="tank" onclick="selectRobotType('tank')">
+                                <div class="robot-type-preview">
+                                    <div class="robot-mini-body">
+                                        <div class="robot-mini-head">
+                                            <div class="robot-mini-eye left"></div>
+                                            <div class="robot-mini-eye right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="robot-mini-legs"><div class="robot-mini-leg"></div><div class="robot-mini-leg"></div></div>
+                                </div>
+                                <span>🤖 Mecha</span>
+                            </button>
+                            <button type="button" class="robot-type-btn" data-robot="cute" onclick="selectRobotType('cute')">
+                                <div class="robot-type-preview">
+                                    <div class="robot-mini-body">
+                                        <div class="robot-mini-head">
+                                            <div class="robot-mini-eye left"></div>
+                                            <div class="robot-mini-eye right"></div>
+                                        </div>
+                                    </div>
+                                    <div class="robot-mini-legs"><div class="robot-mini-leg"></div><div class="robot-mini-leg"></div></div>
+                                </div>
+                                <span>👽 Alien</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="handleRegister()">Crear Cuenta</button>
+                    <div class="auth-switch">
+                        ¿Ya tienes cuenta? <button onclick="showLoginForm()">Inicia sesión</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA PRINCIPAL (DASHBOARD) ==================== -->
+    <div id="dashboardScreen" class="screen">
+        <div class="dashboard-layout">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <div class="user-avatar" id="dashAvatar">🤖</div>
+                    <div class="user-info-bar">
+                        <span class="user-name" id="dashUserName">Jugador</span>
+                        <span class="user-level-badge">Nv. <span id="dashLevel">1</span></span>
+                    </div>
+                </div>
+                <div class="top-bar-right">
+                    <div class="top-stat">
+                        <span class="top-stat-icon">🔥</span>
+                        <span id="dashStreak">0</span>
+                    </div>
+                    <div class="top-stat coins">
+                        <span class="top-stat-icon">🪙</span>
+                        <span id="dashCoins">0</span>
+                    </div>
+                    <button class="btn-icon" onclick="handleLogout()" title="Cerrar sesión">🚪</button>
+                </div>
+            </header>
+
+            <div class="xp-bar-wrapper">
+                <div class="xp-bar-fill" id="dashXpBar" style="width: 0%"></div>
+                <span class="xp-bar-text"><span id="dashXp">0</span> / <span id="dashXpMax">100</span> XP</span>
+            </div>
+
+            <div class="dash-robot-section">
+                <div class="robot-display-area">
+                    <div class="robot-3d-scene" id="dashRobotScene">
+                    <div class="robot-3d-wrap" id="dashRobotWrap">
+                    <div class="robot customizable" id="dashRobot">
+                        <div class="robot-antenna"></div>
+                        <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                        <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                        <div class="robot-accessory robot-hat" id="dashRobotHat" style="display:none;"></div>
+                        <div class="robot-head" id="dashRobotHead">
+                            <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="dashEarringL" style="display:none;"></div></div>
+                            <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="dashEarringR" style="display:none;"></div></div>
+                            <div class="robot-visor"></div>
+                            <div class="robot-accessory robot-glasses" id="dashRobotGlasses" style="display:none;"></div>
+                            <div class="robot-eyes">
+                                <div class="eye left" id="dashEyeL"></div>
+                                <div class="eye right" id="dashEyeR"></div>
+                            </div>
+                        </div>
+                        <div class="robot-neck"></div>
+                        <div class="robot-body" id="dashRobotBody">
+                            <div class="robot-outfit-overlay" id="dashOutfitOverlay"></div>
+                            <div class="robot-chest-plate"></div>
+                            <div class="robot-panel-line"></div>
+                            <div class="robot-accessory robot-bowtie" id="dashRobotBowtie" style="display:none;"></div>
+                        </div>
+                        <div class="robot-waist"></div>
+                        <div class="robot-legs">
+                            <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="dashShoeL" style="display:none;"></div></div>
+                            <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="dashShoeR" style="display:none;"></div></div>
+                        </div>
+                    </div>
+                    </div></div>
+                    <div class="robot-shadow"></div>
+                    <div class="robot-name-tag" id="dashCharName">BeiBot</div>
+                </div>
+            </div>
+
+            <div class="dash-menu">
+                <button class="dash-menu-card" onclick="showLanguageScreen()">
+                    <div class="menu-card-icon">🌍</div>
+                    <div class="menu-card-info"><h3>Jugar</h3><p>Aprende vocabulario nuevo</p></div>
+                    <div class="menu-card-arrow">→</div>
+                </button>
+                <button class="dash-menu-card" onclick="showShopScreen()">
+                    <div class="menu-card-icon">🛍️</div>
+                    <div class="menu-card-info"><h3>Tienda</h3><p>Compra ropa y accesorios</p></div>
+                    <div class="menu-card-arrow">→</div>
+                </button>
+                <button class="dash-menu-card" onclick="showWardrobe()">
+                    <div class="menu-card-icon">👔</div>
+                    <div class="menu-card-info"><h3>Armario</h3><p>Equipa tu ropa y accesorios</p></div>
+                    <div class="menu-card-arrow">→</div>
+                </button>
+                <button class="dash-menu-card" onclick="showStatsScreen()">
+                    <div class="menu-card-icon">📊</div>
+                    <div class="menu-card-info"><h3>Estadísticas</h3><p>Mira tu progreso</p></div>
+                    <div class="menu-card-arrow">→</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA IDIOMAS ==================== -->
+    <div id="languageScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showDashboard()">← Atrás</button>
+            <h2 class="screen-title">Selecciona tus idiomas</h2>
+            <div class="language-selection">
+                <div class="language-column">
+                    <h3>Tu idioma nativo</h3>
+                    <div class="language-grid">
+                        <button class="language-btn" data-lang="es" onclick="selectNativeLanguage('es')"><span class="flag">🇪🇸</span><span>Español</span></button>
+                        <button class="language-btn" data-lang="en" onclick="selectNativeLanguage('en')"><span class="flag">🇬🇧</span><span>English</span></button>
+                        <button class="language-btn" data-lang="fr" onclick="selectNativeLanguage('fr')"><span class="flag">🇫🇷</span><span>Français</span></button>
+                    </div>
+                </div>
+                <div class="language-column">
+                    <h3>Idioma a aprender</h3>
+                    <div class="language-grid">
+                        <button class="language-btn" data-lang="es" onclick="selectLearningLanguage('es')"><span class="flag">🇪🇸</span><span>Español</span></button>
+                        <button class="language-btn" data-lang="en" onclick="selectLearningLanguage('en')"><span class="flag">🇬🇧</span><span>English</span></button>
+                        <button class="language-btn" data-lang="fr" onclick="selectLearningLanguage('fr')"><span class="flag">🇫🇷</span><span>Français</span></button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="confirmLanguagesBtn" onclick="showCategoryScreen()" disabled>Continuar</button>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA CATEGORÍAS ==================== -->
+    <div id="categoryScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showLanguageScreen()">← Atrás</button>
+            <h2 class="screen-title">Elige una categoría</h2>
+            <p class="screen-subtitle">Selecciona qué tipo de vocabulario quieres practicar</p>
+            <div class="category-grid">
+                <button class="category-btn" onclick="selectCategory('kitchen')">
+                    <div class="category-icon">🍳</div><h3>Cocina</h3><p>Utensilios y objetos</p>
+                    <div class="category-badge">8 palabras</div>
+                </button>
+                <button class="category-btn" onclick="selectCategory('office')">
+                    <div class="category-icon">💼</div><h3>Oficina</h3><p>Material de trabajo</p>
+                    <div class="category-badge">8 palabras</div>
+                </button>
+                <button class="category-btn" onclick="selectCategory('workshop')">
+                    <div class="category-icon">🔧</div><h3>Taller</h3><p>Herramientas</p>
+                    <div class="category-badge">8 palabras</div>
+                </button>
+                <button class="category-btn" onclick="selectCategory('home')">
+                    <div class="category-icon">🏠</div><h3>Hogar</h3><p>Objetos del hogar</p>
+                    <div class="category-badge">8 palabras</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA MODO DE JUEGO ==================== -->
+    <div id="gameModeScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showCategoryScreen()">← Atrás</button>
+            <h2 class="screen-title">Elige cómo practicar</h2>
+            <div class="game-modes">
+                <button class="game-mode-btn" onclick="startGameMode1()">
+                    <div class="mode-icon">📷</div>
+                    <h3>Modo Cámara</h3>
+                    <p>Muestra objetos reales con tu cámara y Beimax los identifica</p>
+                    <span class="mode-badge">Requiere cámara</span>
+                </button>
+                <button class="game-mode-btn featured" onclick="startImageMode()">
+                    <div class="mode-icon">🖼️</div>
+                    <h3>Modo Imagen</h3>
+                    <p>Escribe el nombre del objeto y escucha su pronunciación. ¡Responde rápido para más puntos!</p>
+                    <span class="mode-badge hot">⭐ Recomendado</span>
+                </button>
+                <button class="game-mode-btn study" onclick="startStudyMode()">
+                    <div class="mode-icon">📚</div>
+                    <h3>Modo Estudio</h3>
+                    <p>Aprende las palabras y escucha su pronunciación con voz robótica. Sin presión.</p>
+                    <span class="mode-badge study-badge">🧠 Aprender</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODO IMAGEN (CON CRONÓMETRO) ==================== -->
+    <div id="imageModeScreen" class="screen">
+        <div class="container game-container">
+            <button class="btn-back" onclick="exitImageMode()">← Salir</button>
+            <div class="game-top-bar">
+                <div class="game-stat"><span>🪙</span> <span id="imgCoins">0</span></div>
+                <div class="game-stat"><span>⭐</span> <span id="imgScore">0</span>/<span id="imgTotal">8</span></div>
+                <div class="game-stat lives"><span>❤️</span> <span id="imgLives">3</span></div>
+                <div class="game-stat timer" id="timerStat"><span>⏱️</span> <span id="imgTimer">20</span></div>
+            </div>
+            <div class="game-progress-bar">
+                <div class="game-progress-fill" id="imgProgressFill" style="width:0%"></div>
+            </div>
+            <!-- Timer bar visual -->
+            <div class="timer-bar-wrapper">
+                <div class="timer-bar-fill" id="timerBarFill"></div>
+            </div>
+
+            <!-- Layout del juego con robot asistente -->
+            <div class="image-game-layout">
+                <!-- Robot asistente integrado -->
+                <div class="image-robot-assistant">
+                    <div class="image-robot-wrap">
+                        <div class="robot customizable image-robot" id="imageRobot">
+                            <div class="robot-antenna"></div>
+                            <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                            <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                            <div class="robot-accessory robot-hat" id="imageRobotHat" style="display:none;"></div>
+                            <div class="robot-head" id="imageRobotHead">
+                                <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="imageEarringL" style="display:none;"></div></div>
+                                <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="imageEarringR" style="display:none;"></div></div>
+                                <div class="robot-visor"></div>
+                                <div class="robot-accessory robot-glasses" id="imageRobotGlasses" style="display:none;"></div>
+                                <div class="robot-eyes">
+                                    <div class="eye left" id="imageEyeL"></div>
+                                    <div class="eye right" id="imageEyeR"></div>
+                                </div>
+                            </div>
+                            <div class="robot-neck"></div>
+                            <div class="robot-body" id="imageRobotBody">
+                                <div class="robot-outfit-overlay" id="imageOutfitOverlay"></div>
+                                <div class="robot-chest-plate"></div>
+                                <div class="robot-panel-line"></div>
+                                <div class="robot-accessory robot-bowtie" id="imageRobotBowtie" style="display:none;"></div>
+                            </div>
+                            <div class="robot-waist"></div>
+                            <div class="robot-legs">
+                                <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="imageShoeL" style="display:none;"></div></div>
+                                <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="imageShoeR" style="display:none;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Burbuja de diálogo del robot -->
+                    <div class="image-speech-bubble" id="imageSpeechBubble">
+                        <div class="speech-bubble-arrow"></div>
+                        <p id="imageRobotMessage">¡Escribe la traducción! ✍️</p>
+                        <div class="robot-hint" id="imageRobotHint" style="display:none;"></div>
+                        <div class="robot-pronunciation" id="imageRobotPronunciation" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Zona principal del juego -->
+                <div class="image-game-main">
+                    <!-- Tarjeta del objeto -->
+                    <div class="object-card" id="imgObjectCard">
+                        <div class="object-card-header">
+                            <span class="object-category-label" id="imgCategoryLabel">Cocina</span>
+                            <span class="object-word-number" id="imgWordNumber">1 / 8</span>
+                        </div>
+                        <div class="object-image-wrapper">
+                            <div class="object-image" id="imgObjectImage">🔪</div>
+                        </div>
+                        <div class="object-native-label">En tu idioma:</div>
+                        <div class="object-native-word" id="imgNativeWord">cuchillo</div>
+                    </div>
+
+                    <!-- Zona de respuesta -->
+                    <div class="answer-section" id="imgAnswerSection">
+                        <div class="answer-block">
+                            <label class="answer-label">Escribe en <strong id="imgLangName">inglés</strong>:</label>
+                            <input type="text" class="answer-input" id="imgAnswerName" placeholder="Escribe la palabra..." autocomplete="off">
+                        </div>
+                        <button class="btn btn-primary btn-full btn-check" onclick="checkImageAnswer()">
+                            ✅ Verificar
+                        </button>
+                    </div>
+
+                    <!-- Resultado -->
+                    <div id="imgResult" class="result-card" style="display:none;">
+                        <div class="result-icon" id="imgResultIcon">✅</div>
+                        <div class="result-main" id="imgResultText">¡Correcto!</div>
+                        <div class="result-details" id="imgResultDetails"></div>
+                        <button class="btn btn-speak" id="imgSpeakBtn" onclick="speakCurrentWord()">
+                            🔊 Escuchar pronunciación
+                        </button>
+                        <button class="btn btn-primary" onclick="nextImageQuestion()">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODO ESTUDIO ==================== -->
+    <div id="studyModeScreen" class="screen">
+        <div class="container game-container">
+            <button class="btn-back" onclick="exitStudyMode()">← Salir</button>
+            <div class="study-header">
+                <h2 class="screen-title">📚 Modo Estudio</h2>
+                <div class="study-progress-text"><span id="studyIndex">1</span> / <span id="studyTotal">8</span></div>
+            </div>
+            <div class="game-progress-bar">
+                <div class="game-progress-fill" id="studyProgressFill" style="width:0%"></div>
+            </div>
+
+            <div class="study-card" id="studyCard">
+                <div class="study-emoji" id="studyEmoji">🔪</div>
+                <div class="study-divider"></div>
+                <div class="study-info-grid">
+                    <div class="study-lang-block native">
+                        <div class="study-lang-label" id="studyNativeLangLabel">Tu idioma</div>
+                        <div class="study-word" id="studyNativeWord">cuchillo</div>
+                    </div>
+                    <div class="study-arrow">→</div>
+                    <div class="study-lang-block target">
+                        <div class="study-lang-label" id="studyTargetLangLabel">Idioma a aprender</div>
+                        <div class="study-word highlight" id="studyTargetWord">knife</div>
+                        <button class="btn btn-speak btn-speak-study" id="studySpeakBtn" onclick="speakStudyWord()">
+                            🔊 Escuchar pronunciación
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="study-tip">
+                <span>💡</span> <span>Sin puntos ni presión. Solo aprende y memoriza.</span>
+            </div>
+
+            <button class="btn btn-primary btn-full" onclick="nextStudyWord()" id="studyNextBtn">
+                Siguiente →
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODO CÁMARA ==================== -->
+    <div id="gameMode1Screen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="exitGame()">← Salir</button>
+            <div class="game-top-bar">
+                <div class="game-stat"><span>🪙</span> <span id="coinsAmount3">0</span></div>
+                <div class="game-stat"><span>⭐</span> <span id="scoreMode1">0</span></div>
+            </div>
+            <div class="game-content camera-game-layout">
+                <!-- Robot asistente integrado -->
+                <div class="camera-robot-assistant">
+                    <div class="camera-robot-wrap">
+                        <div class="robot customizable camera-robot" id="cameraRobot">
+                            <div class="robot-antenna"></div>
+                            <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                            <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                            <div class="robot-accessory robot-hat" id="cameraRobotHat" style="display:none;"></div>
+                            <div class="robot-head" id="cameraRobotHead">
+                                <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="cameraEarringL" style="display:none;"></div></div>
+                                <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="cameraEarringR" style="display:none;"></div></div>
+                                <div class="robot-visor"></div>
+                                <div class="robot-accessory robot-glasses" id="cameraRobotGlasses" style="display:none;"></div>
+                                <div class="robot-eyes">
+                                    <div class="eye left" id="cameraEyeL"></div>
+                                    <div class="eye right" id="cameraEyeR"></div>
+                                </div>
+                            </div>
+                            <div class="robot-neck"></div>
+                            <div class="robot-body" id="cameraRobotBody">
+                                <div class="robot-outfit-overlay" id="cameraOutfitOverlay"></div>
+                                <div class="robot-chest-plate"></div>
+                                <div class="robot-panel-line"></div>
+                                <div class="robot-accessory robot-bowtie" id="cameraRobotBowtie" style="display:none;"></div>
+                            </div>
+                            <div class="robot-waist"></div>
+                            <div class="robot-legs">
+                                <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="cameraShoeL" style="display:none;"></div></div>
+                                <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="cameraShoeR" style="display:none;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Burbuja de diálogo del robot -->
+                    <div class="camera-speech-bubble" id="cameraSpeechBubble">
+                        <div class="speech-bubble-arrow"></div>
+                        <p id="objectRequest">Muéstrame: <strong id="requestedObject">Cargando...</strong></p>
+                        <div class="robot-hint" id="robotHint" style="display:none;"></div>
+                        <div class="robot-pronunciation" id="robotPronunciation" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Zona de cámara -->
+                <div class="camera-container">
+                    <video id="webcam1" autoplay playsinline></video>
+                    <canvas id="canvas1" style="display:none;"></canvas>
+                    <div class="camera-overlay"><div class="scan-line"></div></div>
+                </div>
+                <div class="camera-status" id="cameraStatus"></div>
+                <div class="game-controls">
+                    <button class="btn btn-primary" id="captureBtn" onclick="captureMode1()">📸 Capturar</button>
+                    <button class="btn btn-secondary" onclick="skipObject()">Siguiente →</button>
+                    <button class="btn btn-speak" id="cameraSpeakBtn" onclick="speakCameraWord()" style="display:none;">
+                        🔊 Escuchar
+                    </button>
+                </div>
+                <div id="resultMode1" class="result-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TIENDA (CON PREVIEW) ==================== -->
+    <div id="shopScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="exitShop()">← Atrás</button>
+            <div class="shop-header">
+                <h2 class="screen-title">🛍️ Tienda</h2>
+                <div class="shop-coins"><span>🪙</span> <span id="shopCoins">0</span></div>
+            </div>
+
+            <!-- Robot Preview en Tienda -->
+            <div class="shop-preview-area">
+                <div class="shop-preview-robot-wrap">
+                    <div class="robot customizable" id="shopRobot">
+                        <div class="robot-antenna"></div>
+                        <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                        <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                        <div class="robot-accessory robot-hat" id="shopRobotHat" style="display:none;"></div>
+                        <div class="robot-head" id="shopRobotHead">
+                            <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="shopEarringL" style="display:none;"></div></div>
+                            <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="shopEarringR" style="display:none;"></div></div>
+                            <div class="robot-visor"></div>
+                            <div class="robot-accessory robot-glasses" id="shopRobotGlasses" style="display:none;"></div>
+                            <div class="robot-eyes">
+                                <div class="eye left" id="shopEyeL"></div>
+                                <div class="eye right" id="shopEyeR"></div>
+                            </div>
+                        </div>
+                        <div class="robot-neck"></div>
+                        <div class="robot-body" id="shopRobotBody">
+                            <div class="robot-outfit-overlay" id="shopOutfitOverlay"></div>
+                            <div class="robot-chest-plate"></div>
+                            <div class="robot-panel-line"></div>
+                            <div class="robot-accessory robot-bowtie" id="shopRobotBowtie" style="display:none;"></div>
+                        </div>
+                        <div class="robot-waist"></div>
+                        <div class="robot-legs">
+                            <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="shopShoeL" style="display:none;"></div></div>
+                            <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="shopShoeR" style="display:none;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="shop-preview-label" id="shopPreviewLabel">Vista previa</div>
+                <div class="shop-preview-actions" id="shopPreviewActions" style="display:none;">
+                    <button class="btn btn-primary btn-sm" id="shopBuyBtn" onclick="confirmPurchase()">✅ Comprar</button>
+                    <button class="btn btn-secondary btn-sm" id="shopEquipBtn" onclick="equipFromShop()" style="display:none;">👕 Equipar</button>
+                    <button class="btn btn-secondary btn-sm" onclick="cancelPreview()">❌ Cancelar</button>
+                </div>
+            </div>
+
+            <div class="shop-tabs">
+                <button class="shop-tab active" data-tab="outfits" onclick="switchShopTab('outfits')">👕 Ropa</button>
+                <button class="shop-tab" data-tab="hats" onclick="switchShopTab('hats')">🎩 Sombreros</button>
+                <button class="shop-tab" data-tab="glasses" onclick="switchShopTab('glasses')">👓 Gafas</button>
+                <button class="shop-tab" data-tab="accessories" onclick="switchShopTab('accessories')">🎀 Accesorios</button>
+                <button class="shop-tab" data-tab="earrings" onclick="switchShopTab('earrings')">💍 Aretes</button>
+                <button class="shop-tab" data-tab="shoes" onclick="switchShopTab('shoes')">👟 Zapatos</button>
+            </div>
+            <div id="shopOutfits" class="shop-grid active"></div>
+            <div id="shopHats" class="shop-grid"></div>
+            <div id="shopGlasses" class="shop-grid"></div>
+            <div id="shopAccessories" class="shop-grid"></div>
+            <div id="shopEarrings" class="shop-grid"></div>
+            <div id="shopShoes" class="shop-grid"></div>
+        </div>
+    </div>
+
+    <!-- ==================== ARMARIO (WARDROBE) ==================== -->
+    <div id="wardrobeScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showDashboard()">← Atrás</button>
+            <h2 class="screen-title">👔 Mi Armario</h2>
+            <p class="screen-subtitle">Equipa la ropa que has comprado</p>
+            <div class="wardrobe-type-selector">
+                <span class="type-switch-label">Tipo de robot:</span>
+                <button class="type-switch-btn active" data-type="classic" onclick="changeRobotType('classic')">🤖 Clásico</button>
+                <button class="type-switch-btn" data-type="athletic" onclick="changeRobotType('athletic')">💪 Fuerte</button>
+                <button class="type-switch-btn" data-type="slim" onclick="changeRobotType('slim')">🌸 Femenina</button>
+                <button class="type-switch-btn" data-type="tank" onclick="changeRobotType('tank')">⚙️ Mecha</button>
+                <button class="type-switch-btn" data-type="cute" onclick="changeRobotType('cute')">👽 Alien</button>
+            </div>
+            <div class="wardrobe-layout">
+                <div class="wardrobe-robot-area">
+                    <div class="robot-3d-scene" id="wardrobeRobotScene">
+                        <div class="robot-3d-wrap" id="wardrobeRobotWrap">
+                            <div class="robot customizable" id="wardrobeRobot">
+                                <div class="robot-antenna"></div>
+                                <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                                <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                                <div class="robot-accessory robot-hat" id="wardrobeRobotHat" style="display:none;"></div>
+                                <div class="robot-head" id="wardrobeRobotHead">
+                                    <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="wardrobeEarringL" style="display:none;"></div></div>
+                                    <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="wardrobeEarringR" style="display:none;"></div></div>
+                                    <div class="robot-visor"></div>
+                                    <div class="robot-accessory robot-glasses" id="wardrobeRobotGlasses" style="display:none;"></div>
+                                    <div class="robot-eyes">
+                                        <div class="eye left" id="wardrobeEyeL"></div>
+                                        <div class="eye right" id="wardrobeEyeR"></div>
+                                    </div>
+                                </div>
+                                <div class="robot-neck"></div>
+                                <div class="robot-body" id="wardrobeRobotBody">
+                                    <div class="robot-outfit-overlay" id="wardrobeOutfitOverlay"></div>
+                                    <div class="robot-chest-plate"></div>
+                                    <div class="robot-panel-line"></div>
+                                    <div class="robot-accessory robot-bowtie" id="wardrobeRobotBowtie" style="display:none;"></div>
+                                </div>
+                                <div class="robot-waist"></div>
+                                <div class="robot-legs">
+                                    <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="wardrobeShoeL" style="display:none;"></div></div>
+                                    <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="wardrobeShoeR" style="display:none;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="robot-shadow"></div>
+                </div>
+                <div class="wardrobe-tabs">
+                    <button class="wardrobe-tab active" data-tab="outfits" onclick="switchWardrobeTab('outfits')">👕 Ropa</button>
+                    <button class="wardrobe-tab" data-tab="hats" onclick="switchWardrobeTab('hats')">🎩 Sombreros</button>
+                    <button class="wardrobe-tab" data-tab="glasses" onclick="switchWardrobeTab('glasses')">👓 Gafas</button>
+                    <button class="wardrobe-tab" data-tab="accessories" onclick="switchWardrobeTab('accessories')">🎀 Accesorios</button>
+                    <button class="wardrobe-tab" data-tab="earrings" onclick="switchWardrobeTab('earrings')">💍 Aretes</button>
+                    <button class="wardrobe-tab" data-tab="shoes" onclick="switchWardrobeTab('shoes')">👟 Zapatos</button>
+                </div>
+                <div id="wardrobeOutfits" class="wardrobe-grid active"></div>
+                <div id="wardrobeHats" class="wardrobe-grid"></div>
+                <div id="wardrobeGlasses" class="wardrobe-grid"></div>
+                <div id="wardrobeAccessories" class="wardrobe-grid"></div>
+                <div id="wardrobeEarrings" class="wardrobe-grid"></div>
+                <div id="wardrobeShoes" class="wardrobe-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MENÚ DE BATALLA ==================== -->
+    <div id="battleMenuScreen" class="screen">
+        <div class="container battle-container">
+            <button class="btn-back" onclick="showDashboard()">← Atrás</button>
+            <h2 class="screen-title">⚔️ Arena de Batalla</h2>
+
+            <!-- Robot info card -->
+            <div class="battle-hero-card">
+                <div class="battle-hero-robot">
+                    <div class="robot-scene" id="battleMenuRobotScene">
+                        <div class="robot" id="battleMenuRobot">
+                            <div class="robot-antenna"></div>
+                            <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                            <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                            <div class="robot-head">
+                                <div class="robot-ear ear-left"></div>
+                                <div class="robot-ear ear-right"></div>
+                                <div class="robot-visor"></div>
+                                <div class="robot-eyes">
+                                    <div class="eye left" id="battleMenuEyeL"></div>
+                                    <div class="eye right" id="battleMenuEyeR"></div>
+                                </div>
+                                <div class="robot-accessory hat-slot" id="battleMenuHat"></div>
+                                <div class="robot-accessory glasses-slot" id="battleMenuGlasses"></div>
+                                <div class="robot-accessory earring-slot" id="battleMenuEarring"></div>
+                            </div>
+                            <div class="robot-neck"></div>
+                            <div class="robot-body" id="battleMenuBody">
+                                <div class="robot-chest-plate"></div>
+                                <div class="robot-panel-line"></div>
+                                <div class="robot-accessory bowtie-slot" id="battleMenuBowtie"></div>
+                                <div class="robot-outfit-overlay" id="battleMenuOutfit"></div>
+                            </div>
+                            <div class="robot-waist"></div>
+                            <div class="robot-legs">
+                                <div class="robot-leg leg-left"><div class="robot-foot"><div class="robot-accessory shoe-slot" id="battleMenuShoeL"></div></div></div>
+                                <div class="robot-leg leg-right"><div class="robot-foot"><div class="robot-accessory shoe-slot" id="battleMenuShoeR"></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="battle-hero-info">
+                    <div class="bh-name" id="battleMenuRobotName">BeiBot</div>
+                    <div class="bh-level" id="battleMenuRobotLevel">Nv. 1</div>
+                    <div class="bh-type" id="battleMenuRobotType">⚡ Eléctrico</div>
+                    <div class="bh-ability" id="battleMenuAbility">⚡ Voltaje: Más daño eléctrico</div>
+                    <div class="bh-stats">
+                        <div class="bh-stat"><span class="stat-label">HP</span><span class="stat-val" id="bMenuHp">100</span></div>
+                        <div class="bh-stat"><span class="stat-label">ATK</span><span class="stat-val" id="bMenuAtk">55</span></div>
+                        <div class="bh-stat"><span class="stat-label">DEF</span><span class="stat-val" id="bMenuDef">55</span></div>
+                        <div class="bh-stat"><span class="stat-label">A.ESP</span><span class="stat-val" id="bMenuSpAtk">55</span></div>
+                        <div class="bh-stat"><span class="stat-label">D.ESP</span><span class="stat-val" id="bMenuSpDef">55</span></div>
+                        <div class="bh-stat"><span class="stat-label">VEL</span><span class="stat-val" id="bMenuSpd">60</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ranking card -->
+            <div class="battle-ranking-card" id="battleRankingCard">
+                <div class="ranking-header">
+                    <span class="ranking-title">🏅 Tu Ranking</span>
+                    <span class="ranking-elo" id="rankingElo">1000</span>
+                </div>
+                <div class="ranking-stats">
+                    <div class="ranking-stat">
+                        <span class="ranking-stat-val" id="rankingWins">0</span>
+                        <span class="ranking-stat-label">Victorias</span>
+                    </div>
+                    <div class="ranking-stat">
+                        <span class="ranking-stat-val" id="rankingLosses">0</span>
+                        <span class="ranking-stat-label">Derrotas</span>
+                    </div>
+                    <div class="ranking-stat">
+                        <span class="ranking-stat-val" id="rankingWinRate">0%</span>
+                        <span class="ranking-stat-label">% Victoria</span>
+                    </div>
+                    <div class="ranking-stat">
+                        <span class="ranking-stat-val" id="rankingTier">🥉 Bronce</span>
+                        <span class="ranking-stat-label">Liga</span>
+                    </div>
+                </div>
+                <div class="ranking-bar-wrapper">
+                    <div class="ranking-bar-bg">
+                        <div class="ranking-bar-fill" id="rankingBarFill" style="width: 0%"></div>
+                    </div>
+                    <div class="ranking-bar-labels">
+                        <span id="rankingNextTier">Siguiente: 🥈 Plata (1200)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Battle options -->
+            <div class="battle-options">
+                <button class="btn btn-battle-mode" onclick="showBattleShop()">
+                    <span class="bbm-icon">🛒</span>
+                    <span class="bbm-text">
+                        <strong>Tienda de Armas</strong>
+                        <small>Compra armas, escudos y módulos</small>
+                    </span>
+                </button>
+                <button class="btn btn-battle-mode" onclick="showBattlePrep()">
+                    <span class="bbm-icon">📋</span>
+                    <span class="bbm-text">
+                        <strong>Elegir Movimientos</strong>
+                        <small>Configura tus 4 ataques</small>
+                    </span>
+                </button>
+            </div>
+
+            <!-- Opponent list -->
+            <h3 class="section-subtitle">🤖 Oponentes CPU</h3>
+            <div class="cpu-opponent-list" id="cpuOpponentList"></div>
+
+            <!-- Online battle -->
+            <h3 class="section-subtitle">🌐 Batalla Online</h3>
+            <button class="btn btn-primary btn-full btn-online" onclick="showOnlineBattle()">
+                🌐 Buscar Batalla Online
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== TIENDA DE EQUIPAMIENTO ==================== -->
+    <div id="battleShopScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showBattleMenu()">← Atrás</button>
+            <h2 class="screen-title">🛒 Tienda de Armas</h2>
+            <div class="shop-coins-display">🪙 <span id="battleShopCoins">0</span></div>
+
+            <div class="eq-shop-tabs">
+                <button class="eq-tab active" onclick="switchEqTab('weapons', this)">⚔️ Armas</button>
+                <button class="eq-tab" onclick="switchEqTab('shields', this)">🛡️ Escudos</button>
+                <button class="eq-tab" onclick="switchEqTab('modules', this)">🔧 Módulos</button>
+            </div>
+
+            <div class="eq-shop-grid" id="eqShopWeapons"></div>
+            <div class="eq-shop-grid" id="eqShopShields" style="display:none"></div>
+            <div class="eq-shop-grid" id="eqShopModules" style="display:none"></div>
+        </div>
+    </div>
+
+    <!-- ==================== PREPARACIÓN DE BATALLA ==================== -->
+    <div id="battlePrepScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showBattleMenu()">← Atrás</button>
+            <h2 class="screen-title">⚔️ Preparar Batalla</h2>
+
+            <!-- Slots seleccionados (arriba, siempre visibles) -->
+            <div class="prep-slots-wrapper">
+                <p class="prep-slots-label">Tus movimientos (mín. 2, máx. 4):</p>
+                <div class="prep-selected-slots" id="selectedMovesBar">
+                    <!-- JS fills 4 slots -->
+                </div>
+            </div>
+
+            <!-- Instrucción -->
+            <p class="prep-hint">👆 Toca un movimiento para añadirlo · Toca un slot para quitarlo</p>
+
+            <!-- Grid de movimientos disponibles -->
+            <div class="prep-available-label">Movimientos disponibles:</div>
+            <div class="move-selector-grid" id="moveSelectorGrid"></div>
+
+            <button class="btn btn-primary btn-full" id="startBattleBtn" onclick="confirmStartBattle()" disabled>
+                ⚔️ ¡Iniciar Batalla!
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA DE BATALLA ==================== -->
+    <div id="battleScreen" class="screen">
+        <div class="battle-arena">
+            <!-- Sky / environment background -->
+            <div class="battle-sky">
+                <div class="battle-cloud cloud-1"></div>
+                <div class="battle-cloud cloud-2"></div>
+                <div class="battle-cloud cloud-3"></div>
+            </div>
+
+            <!-- Battlefield 3D perspective field -->
+            <div class="battle-field">
+                <div class="battle-field-lines"></div>
+
+                <!-- Arena environment details -->
+                <div class="battle-env-grass"></div>
+                <div class="battle-env-grass battle-env-grass-2"></div>
+                <div class="battle-env-dust" id="battleEnvDust"></div>
+                
+                <!-- Opponent platform (back, smaller - perspective) -->
+                <div class="battle-platform opponent-platform">
+                    <div class="platform-shadow opp-shadow"></div>
+                    <div class="battle-info-card opponent-card">
+                        <div class="bi-top-row">
+                            <div class="bi-name" id="battleOpponentName">Oponente</div>
+                            <div class="bi-level" id="battleOpponentLevel">Nv.1</div>
+                        </div>
+                        <div class="bi-type" id="battleOpponentType">⚡ Eléctrico</div>
+                        <div class="battle-hp-bar-wrap">
+                            <div class="battle-hp-fill hp-high" id="battleOpponentHpBar" style="width:100%"></div>
+                        </div>
+                        <div class="battle-hp-text" id="battleOpponentHpText">100 / 100</div>
+                    </div>
+                    <div class="battle-robot-area opponent-robot-area">
+                        <div class="robot-ground-shadow"></div>
+                        <div class="robot small" id="battleOpponentRobot">
+                            <div class="robot-antenna"></div>
+                            <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                            <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                            <div class="robot-accessory robot-hat" id="battleOpponentRobotHat" style="display:none;"></div>
+                            <div class="robot-head">
+                                <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="battleOpponentEarringL" style="display:none;"></div></div>
+                                <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="battleOpponentEarringR" style="display:none;"></div></div>
+                                <div class="robot-visor"></div>
+                                <div class="robot-accessory robot-glasses" id="battleOpponentRobotGlasses" style="display:none;"></div>
+                                <div class="robot-eyes">
+                                    <div class="eye left" id="battleOpponentEyeL"></div>
+                                    <div class="eye right" id="battleOpponentEyeR"></div>
+                                </div>
+                            </div>
+                            <div class="robot-neck"></div>
+                            <div class="robot-body" id="battleOpponentRobotBody">
+                                <div class="robot-outfit-overlay" id="battleOpponentOutfitOverlay"></div>
+                                <div class="robot-chest-plate"></div>
+                                <div class="robot-panel-line"></div>
+                                <div class="robot-accessory robot-bowtie" id="battleOpponentRobotBowtie" style="display:none;"></div>
+                            </div>
+                            <div class="robot-waist"></div>
+                            <div class="robot-legs">
+                                <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="battleOpponentShoeL" style="display:none;"></div></div>
+                                <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="battleOpponentShoeR" style="display:none;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player platform (front, larger) -->
+                <div class="battle-platform player-platform">
+                    <div class="platform-shadow player-shadow"></div>
+                    <div class="battle-robot-area player-robot-area">
+                        <div class="robot-ground-shadow"></div>
+                        <div class="robot small" id="battlePlayerRobot">
+                            <div class="robot-antenna"></div>
+                            <div class="robot-arm robot-arm-left"><div class="robot-hand"></div></div>
+                            <div class="robot-arm robot-arm-right"><div class="robot-hand"></div></div>
+                            <div class="robot-accessory robot-hat" id="battlePlayerRobotHat" style="display:none;"></div>
+                            <div class="robot-head">
+                                <div class="robot-ear ear-left"><div class="robot-accessory robot-earring" id="battlePlayerEarringL" style="display:none;"></div></div>
+                                <div class="robot-ear ear-right"><div class="robot-accessory robot-earring" id="battlePlayerEarringR" style="display:none;"></div></div>
+                                <div class="robot-visor"></div>
+                                <div class="robot-accessory robot-glasses" id="battlePlayerRobotGlasses" style="display:none;"></div>
+                                <div class="robot-eyes">
+                                    <div class="eye left" id="battlePlayerEyeL"></div>
+                                    <div class="eye right" id="battlePlayerEyeR"></div>
+                                </div>
+                            </div>
+                            <div class="robot-neck"></div>
+                            <div class="robot-body" id="battlePlayerRobotBody">
+                                <div class="robot-outfit-overlay" id="battlePlayerOutfitOverlay"></div>
+                                <div class="robot-chest-plate"></div>
+                                <div class="robot-panel-line"></div>
+                                <div class="robot-accessory robot-bowtie" id="battlePlayerRobotBowtie" style="display:none;"></div>
+                            </div>
+                            <div class="robot-waist"></div>
+                            <div class="robot-legs">
+                                <div class="robot-leg leg-left"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="battlePlayerShoeL" style="display:none;"></div></div>
+                                <div class="robot-leg leg-right"><div class="robot-foot"></div><div class="robot-accessory robot-shoe" id="battlePlayerShoeR" style="display:none;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="battle-info-card player-card">
+                        <div class="bi-top-row">
+                            <div class="bi-name" id="battlePlayerName">Jugador</div>
+                            <div class="bi-level" id="battlePlayerLevel">Nv.1</div>
+                        </div>
+                        <div class="bi-type" id="battlePlayerType">⚡ Eléctrico</div>
+                        <div class="battle-hp-bar-wrap">
+                            <div class="battle-hp-fill hp-high" id="battlePlayerHpBar" style="width:100%"></div>
+                        </div>
+                        <div class="battle-hp-text" id="battlePlayerHpText">100 / 100</div>
+                    </div>
+                </div>
+
+                <!-- Particle / FX overlay (for attack animations) -->
+                <div class="battle-fx-layer" id="battleFxLayer"></div>
+
+                <!-- Effectiveness popup -->
+                <div class="battle-effectiveness-popup" id="battleEffPopup"></div>
+            </div>
+
+            <!-- Bottom UI panel (mobile) / Side panel (desktop) -->
+            <div class="battle-ui-panel">
+                <!-- Turn indicator + Timer -->
+                <div class="battle-turn-indicator" id="battleTurnIndicator">
+                    <span class="turn-number" id="turnNumber">Turno 1</span>
+                    <span class="turn-who" id="turnWho">Tu turno — ¡Elige un movimiento!</span>
+                    <div class="turn-timer" id="turnTimerWrap">
+                        <svg class="turn-timer-svg" viewBox="0 0 36 36">
+                            <circle class="turn-timer-bg" cx="18" cy="18" r="15.9" fill="none" stroke-width="2.8"></circle>
+                            <circle class="turn-timer-ring" id="turnTimerRing" cx="18" cy="18" r="15.9" fill="none" stroke-width="2.8"
+                                stroke-dasharray="100" stroke-dashoffset="0"></circle>
+                        </svg>
+                        <span class="turn-timer-text" id="turnTimerText">30</span>
+                    </div>
+                </div>
+
+                <!-- Move buttons -->
+                <div class="battle-move-grid" id="battleMoveGrid"></div>
+
+                <!-- Battle log (collapsible) -->
+                <div class="battle-log-toggle" onclick="this.closest('.battle-ui-panel').classList.toggle('log-open')">
+                    📜 <span>Log</span>
+                </div>
+                <div class="battle-log-container">
+                    <div class="battle-log" id="battleLog"></div>
+                </div>
+            </div>
+
+            <!-- Battle result overlay -->
+            <div class="battle-result-overlay" id="battleResultOverlay" style="display:none">
+                <div class="battle-result-card">
+                    <div class="battle-result-icon" id="battleResultIcon">🏆</div>
+                    <div class="battle-result-title win" id="battleResultTitle">¡Victoria!</div>
+                    <div class="battle-result-details" id="battleResultDetails"></div>
+                    <button class="btn btn-primary" onclick="closeBattleResult()">Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== BATALLA ONLINE ==================== -->
+    <div id="onlineBattleScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showBattleMenu()">← Atrás</button>
+            <h2 class="screen-title">🌐 Batalla Online</h2>
+            <div class="online-status-card">
+                <div class="online-status" id="onlineStatus">Conectando...</div>
+                <button class="btn btn-primary btn-full" id="onlineMatchBtn" disabled>
+                    🔍 Buscar Oponente
+                </button>
+                <div class="online-help">
+                    <p>📌 <strong>¿Cómo jugar online?</strong></p>
+                    <ol>
+                        <li>Ambos jugadores deben abrir el juego en la misma red WiFi</li>
+                        <li>Ambos presionan "Buscar Oponente"</li>
+                        <li>El servidor los empareja automáticamente</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ESTADÍSTICAS ==================== -->
+    <div id="statsScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="showDashboard()">← Atrás</button>
+            <h2 class="screen-title">📊 Mis Estadísticas</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-icon">🎮</div><div class="stat-value" id="statGames">0</div><div class="stat-label">Partidas</div></div>
+                <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="statCorrect">0</div><div class="stat-label">Correctas</div></div>
+                <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value" id="statBestStreak">0</div><div class="stat-label">Mejor racha</div></div>
+                <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value" id="statLevel">1</div><div class="stat-label">Nivel</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div id="notification" class="notification" style="display:none;">
+        <div class="notification-icon" id="notifIcon">🎉</div>
+        <div class="notification-text" id="notifText">¡Subiste de nivel!</div>
+    </div>
+
+    <!-- ==================== NAV BAR ==================== -->
+    <nav class="nav-bar" id="mainNavBar">
+        <button class="nav-btn active" data-nav="dashboard" onclick="navTo('dashboard')">
+            <span class="nav-btn-icon">🏠</span>
+            <span class="nav-btn-label">Inicio</span>
+        </button>
+        <button class="nav-btn" data-nav="play" onclick="navTo('play')">
+            <span class="nav-btn-icon">🎮</span>
+            <span class="nav-btn-label">Jugar</span>
+        </button>
+        <button class="nav-btn" data-nav="battle" onclick="navTo('battle')">
+            <span class="nav-btn-icon">⚔️</span>
+            <span class="nav-btn-label">Batalla</span>
+        </button>
+        <button class="nav-btn" data-nav="shop" onclick="navTo('shop')">
+            <span class="nav-btn-icon">🛍️</span>
+            <span class="nav-btn-label">Tienda</span>
+        </button>
+        <button class="nav-btn" data-nav="wardrobe" onclick="navTo('wardrobe')">
+            <span class="nav-btn-icon">👔</span>
+            <span class="nav-btn-label">Armario</span>
+        </button>
+        <button class="nav-btn" data-nav="stats" onclick="navTo('stats')">
+            <span class="nav-btn-icon">📊</span>
+            <span class="nav-btn-label">Stats</span>
+        </button>
+    </nav>
+
+    <!-- TensorFlow.js + COCO-SSD for real-time object detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+    <script src="skins.js?v=2"></script>
+    <script src="vocabulary.js?v=2"></script>
+    <script src="battle.js?v=2"></script>
+    <script src="backend-service.js?v=2"></script>
+    <script src="api-service.js?v=2"></script>
+    <script src="script.js?v=2"></script>
+</body>
+</html>

@@ -62,35 +62,27 @@ async function loadCocoModel() {
             throw new Error('La librería cocoSsd no está disponible. ¿Falta el CDN de TensorFlow.js?');
         }
 
-        // lite_mobilenet_v2 usa storage.googleapis.com (accesible)
-        // mobilenet_v2 usa tfhub.dev que puede estar caído → lo omitimos
         const modelsToTry = ['lite_mobilenet_v2'];
 
         for (const base of modelsToTry) {
             try {
-                console.log(`📦 Cargando COCO-SSD (${base})...`);
                 cocoModel = await withTimeout(
                     cocoSsd.load({ base }),
                     30000,
                     `carga de modelo ${base}`
                 );
                 cocoReady = true;
-                console.log(`✅ COCO-SSD listo (${base}) — puede detectar 80 tipos de objetos`);
                 return cocoModel;
             } catch (e) {
-                console.warn(`⚠️ ${base} falló: ${e.message}`);
+                // intentar siguiente modelo
             }
         }
 
-        // Último intento: carga por defecto sin especificar base
-        console.log('📦 Último intento: COCO-SSD (default)...');
         cocoModel = await withTimeout(cocoSsd.load(), 30000, 'carga de modelo default');
         cocoReady = true;
-        console.log('✅ COCO-SSD listo (default)');
         return cocoModel;
     } catch (e) {
-        console.error('❌ Error cargando COCO-SSD:', e.message || e);
-        console.error('💡 Posibles causas: sin internet, firewall bloqueando tfhub.dev/storage.googleapis.com, o VPN/proxy');
+        console.error('Error cargando COCO-SSD:', e.message || e);
         cocoReady = false;
         return null;
     } finally {
@@ -132,20 +124,18 @@ const COCO_TO_GAME_MAP = {
  */
 async function detectObjectsCoco(source) {
     if (typeof cocoSsd === 'undefined') {
-        console.error('❌ COCO-SSD library no cargada. Verifica la conexión a internet (CDN).');
+        console.error('COCO-SSD library no cargada.');
         return [];
     }
     const model = await loadCocoModel();
     if (!model) {
-        console.error('❌ Modelo COCO-SSD no disponible');
+        console.error('Modelo COCO-SSD no disponible');
         return [];
     }
 
     try {
-        // Umbral bajo (0.15) para detectar objetos pequeños como cucharas, tenedores, etc.
+        // Umbral bajo (0.15) para detectar objetos pequeños
         const predictions = await model.detect(source, 20, 0.15);
-        console.log(`🔍 COCO-SSD encontró ${predictions.length} objetos:`,
-            predictions.map(p => `${p.class}(${(p.score*100).toFixed(0)}%)`).join(', ') || 'ninguno');
         return predictions.map(p => ({
             label: p.class.toLowerCase(),
             score: p.score,
@@ -396,7 +386,7 @@ async function apiIdentifyObject(source, category, useFallback = true) {
             };
         }
     } catch (e) {
-        console.warn('COCO-SSD falló:', e);
+        // COCO-SSD falló, usar fallback
     }
 
     if (useFallback) return getFallbackResponse('identifyObject', null, category);
@@ -411,14 +401,10 @@ async function apiIdentifyObject(source, category, useFallback = true) {
  */
 async function apiValidateObject(source, expectedObject, category, useFallback = true) {
     try {
-        console.log(`🎯 Validando objeto esperado: "${expectedObject}" en categoría: "${category}"`);
         const detections = await detectObjectsCoco(source);
         if (detections.length > 0) {
-            const result = matchDetectionToVocabulary(detections, expectedObject, category);
-            console.log('📋 Resultado match:', JSON.stringify(result, null, 2));
-            return result;
+            return matchDetectionToVocabulary(detections, expectedObject, category);
         }
-        console.warn('⚠️ COCO-SSD no detectó ningún objeto en la imagen');
         return {
             isCorrect: false,
             detectedObject: 'nada detectado',
@@ -428,7 +414,6 @@ async function apiValidateObject(source, expectedObject, category, useFallback =
             description: 'No se detectó ningún objeto. Acerca el objeto con buena iluminación.'
         };
     } catch (e) {
-        console.warn('Error en detección:', e);
         if (useFallback) return getFallbackResponse('validateObject', null, expectedObject, category);
         throw e;
     }
@@ -441,7 +426,7 @@ async function apiTranslateWord(word, fromLang, toLang, useFallback = true) {
     try {
         if (apiAvailable) return await translateWordAPI(word, fromLang, toLang);
     } catch (e) {
-        console.warn('DeepSeek translate error:', e);
+        // usar fallback
     }
     if (useFallback) return getFallbackResponse('translate', word, fromLang, toLang);
     throw new Error('Traducción fallida');
@@ -536,10 +521,7 @@ let aiModels = [];
 
 async function initializeAPI() {
     // 1. Cargar COCO-SSD para detección de objetos por cámara
-    loadCocoModel().then(model => {
-        if (model) console.log('📷 COCO-SSD listo para detección visual');
-        else console.warn('⚠️ COCO-SSD no disponible — detección visual degradada');
-    });
+    loadCocoModel();
 
     // 2. Verificar DeepSeek R1 para traducciones/chat
     try {
@@ -550,13 +532,9 @@ async function initializeAPI() {
             const data = await response.json();
             apiAvailable = data.status === 'ok';
             aiModels = data.models || [];
-            if (apiAvailable) {
-                console.log('🧠 DeepSeek R1 conectado:', aiModels.join(', '));
-            }
         }
     } catch {
         apiAvailable = false;
-        console.warn('⚠️ DeepSeek R1 no disponible — usando datos locales');
     }
 
     return apiAvailable;
@@ -564,10 +542,7 @@ async function initializeAPI() {
 
 // Re-check DeepSeek R1 cada 30s
 setInterval(async () => {
-    const was = apiAvailable;
     apiAvailable = await checkAPIHealth();
-    if (!was && apiAvailable) console.log('✅ DeepSeek R1 reconectado');
-    else if (was && !apiAvailable) console.warn('⚠️ DeepSeek R1 desconectado');
 }, 30000);
 
 // ============================================

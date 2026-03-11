@@ -72,20 +72,14 @@ const gameState = {
     battleStats: { wins: 0, losses: 0, elo: 1000 }
 };
 
-// categoryData and wordSynonyms are now in vocabulary.js
-
 const langNames = {
     es: 'Español', en: 'English', fr: 'Français'
 };
 
-// Outfit definitions now in skins.js via getOutfitData()
-// Legacy wrapper for compatibility
 function getOutfitInfo(value) {
     if (typeof getOutfitData === 'function') return getOutfitData(value);
     return { bodyColor: '#E74856', hat: 'none', glasses: 'none', bowtie: 'none' };
 }
-
-// wordSynonyms is now auto-built in vocabulary.js via buildSynonyms()
 
 // ========== AUTH FUNCTIONS ==========
 
@@ -286,7 +280,7 @@ async function loadProfile() {
             try {
                 gameState.inventory = JSON.parse(profile.inventory);
             } catch(e) {
-                console.log('No inventory found, using defaults');
+                // inventory malformed, usar defaults
             }
         }
         // Check-in diario para rachas

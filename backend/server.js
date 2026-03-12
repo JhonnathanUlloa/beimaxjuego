@@ -1079,7 +1079,11 @@ function ensureCerts() {
     }
 }
 
-app.listen(PORT, '0.0.0.0', () => {
+// Usar http.createServer para poder adjuntar WebSocket al mismo puerto
+const http = require('http');
+const httpServer = http.createServer(app);
+
+httpServer.listen(PORT, '0.0.0.0', () => {
     const os = require('os');
     const nets = os.networkInterfaces();
     let localIP = 'No encontrada';
@@ -1097,10 +1101,12 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
     console.log(`✅ HTTP Local:  http://localhost:${PORT}`);
     console.log(`📱 HTTP Red:    http://${localIP}:${PORT}`);
+    console.log(`🎮 WebSocket:   ws://${localIP}:${PORT} (mismo puerto HTTP)`);
 
-    // ========== WebSocket Server para Batallas Online ==========
-    const WS_PORT = parseInt(PORT) + 1;
-    const wss = new WebSocket.Server({ port: WS_PORT });
+    // ========== WebSocket Server — mismo puerto que HTTP ==========
+    // Adjuntado al httpServer para compartir puerto 3000 (sin puerto extra,
+    // sin reglas de firewall adicionales — funciona en LAN automáticamente)
+    const wss = new WebSocket.Server({ server: httpServer });
     const battleQueue = [];
     const activeBattles = new Map();
 
@@ -1120,9 +1126,12 @@ app.listen(PORT, '0.0.0.0', () => {
         });
 
         ws.on('close', () => {
-            // Remove from queue
+            // Remove from queue and cancel timeout
             const qIdx = battleQueue.findIndex(q => q.ws === ws);
-            if (qIdx >= 0) battleQueue.splice(qIdx, 1);
+            if (qIdx >= 0) {
+                clearTimeout(battleQueue[qIdx].queueTimer);
+                battleQueue.splice(qIdx, 1);
+            }
             // Handle disconnect from active battle
             if (ws.battleId && activeBattles.has(ws.battleId)) {
                 const battle = activeBattles.get(ws.battleId);
@@ -1158,10 +1167,26 @@ app.listen(PORT, '0.0.0.0', () => {
                 battleQueue.push(playerData);
                 ws.send(JSON.stringify({ type: 'queue_joined', position: battleQueue.length }));
 
+                // Timeout de cola: si después de 90s no hay match, notificar
+                playerData.queueTimer = setTimeout(() => {
+                    const idx = battleQueue.findIndex(q => q.ws === ws);
+                    if (idx >= 0) {
+                        battleQueue.splice(idx, 1);
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'queue_timeout',
+                                message: 'No se encontró oponente. Intenta de nuevo.'
+                            }));
+                        }
+                    }
+                }, 90000);
+
                 // Try matchmaking
                 if (battleQueue.length >= 2) {
                     const p1 = battleQueue.shift();
                     const p2 = battleQueue.shift();
+                    clearTimeout(p1.queueTimer);
+                    clearTimeout(p2.queueTimer);
                     const battleId = 'battle_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                     
                     p1.ws.battleId = battleId;
@@ -1171,10 +1196,11 @@ app.listen(PORT, '0.0.0.0', () => {
                         id: battleId,
                         players: [p1, p2],
                         currentTurn: 0,
-                        turnPhase: 'select', // select, resolve
+                        turnPhase: 'select',
                         moves: [null, null]
                     });
 
+                    // Envía al oponente: customization + moves reales (no los por defecto)
                     const startMsg = (pIndex) => JSON.stringify({
                         type: 'battle_start',
                         battleId,
@@ -1183,6 +1209,8 @@ app.listen(PORT, '0.0.0.0', () => {
                             name: pIndex === 0 ? p2.name : p1.name,
                             robotType: pIndex === 0 ? p2.robotType : p1.robotType,
                             level: pIndex === 0 ? p2.level : p1.level,
+                            moves: pIndex === 0 ? p2.moves : p1.moves,
+                            equipment: pIndex === 0 ? p2.equipment : p1.equipment,
                             customization: pIndex === 0 ? p2.customization : p1.customization
                         }
                     });
@@ -1194,7 +1222,10 @@ app.listen(PORT, '0.0.0.0', () => {
             }
             case 'leave_queue': {
                 const idx = battleQueue.findIndex(q => q.ws === ws);
-                if (idx >= 0) battleQueue.splice(idx, 1);
+                if (idx >= 0) {
+                    clearTimeout(battleQueue[idx].queueTimer);
+                    battleQueue.splice(idx, 1);
+                }
                 ws.send(JSON.stringify({ type: 'queue_left' }));
                 break;
             }

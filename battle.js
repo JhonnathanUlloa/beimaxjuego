@@ -1391,6 +1391,9 @@ function showBattleScreen() {
 function applyBattleCustomization(prefix, customData) {
     const c = customData;
     const bodyColor = c.bodyColor || '#E74856';
+    const eyeColor  = c.eyeColor  || '#E74856';
+
+    // Cuerpo
     const bodyEl = document.getElementById(`${prefix}RobotBody`);
     if (bodyEl) {
         bodyEl.style.background = `linear-gradient(180deg, ${bodyColor} 0%, ${darkenHex(bodyColor, 15)} 100%)`;
@@ -1404,6 +1407,15 @@ function applyBattleCustomization(prefix, customData) {
         }
     }
 
+    // Ojos — aplicar eyeColor del oponente
+    ['L', 'R'].forEach(side => {
+        const eyeEl = document.getElementById(`${prefix}Eye${side}`);
+        if (eyeEl) {
+            eyeEl.style.background = eyeColor;
+            eyeEl.style.boxShadow = `0 0 8px ${eyeColor}`;
+        }
+    });
+
     function applySkinAccessory(elId, value, skinCategory) {
         const el = document.getElementById(elId);
         if (!el) return;
@@ -1416,15 +1428,15 @@ function applyBattleCustomization(prefix, customData) {
         }
     }
 
-    applySkinAccessory(`${prefix}RobotHat`, c.hat, 'hats');
+    applySkinAccessory(`${prefix}RobotHat`,     c.hat,     'hats');
     applySkinAccessory(`${prefix}RobotGlasses`, c.glasses, 'glasses');
-    applySkinAccessory(`${prefix}RobotBowtie`, c.bowtie, 'bowties');
-    applySkinAccessory(`${prefix}EarringL`, c.earring, 'earrings');
-    applySkinAccessory(`${prefix}EarringR`, c.earring, 'earrings');
-    applySkinAccessory(`${prefix}ShoeL`, c.shoes, 'shoes');
-    applySkinAccessory(`${prefix}ShoeR`, c.shoes, 'shoes');
+    applySkinAccessory(`${prefix}RobotBowtie`,  c.bowtie,  'bowties');
+    applySkinAccessory(`${prefix}EarringL`,     c.earring, 'earrings');
+    applySkinAccessory(`${prefix}EarringR`,     c.earring, 'earrings');
+    applySkinAccessory(`${prefix}ShoeL`,        c.shoes,   'shoes');
+    applySkinAccessory(`${prefix}ShoeR`,        c.shoes,   'shoes');
 
-    // Body, arms, legs coloring
+    // Brazos, piernas — mismo color que el cuerpo
     const robotEl = document.getElementById(`${prefix}Robot`);
     if (robotEl) {
         const dk = darkenHex(bodyColor, 22);
@@ -1434,9 +1446,10 @@ function applyBattleCustomization(prefix, customData) {
         robotEl.querySelectorAll('.robot-leg').forEach(l => {
             l.style.background = `linear-gradient(180deg, ${darkenHex(bodyColor, 15)} 0%, ${dk} 100%)`;
         });
-        if (c.shoes && c.shoes !== 'none') {
-            robotEl.querySelectorAll('.robot-foot').forEach(f => f.style.opacity = '0');
-        }
+        // Mostrar/ocultar pies según zapatos (resetear siempre para evitar estado residual)
+        robotEl.querySelectorAll('.robot-foot').forEach(f => {
+            f.style.opacity = (c.shoes && c.shoes !== 'none') ? '0' : '1';
+        });
     }
 }
 
@@ -2441,10 +2454,10 @@ function connectWebSocket() {
     const statusEl = document.getElementById('onlineStatus');
     const matchBtn = document.getElementById('onlineMatchBtn');
     
-    // Connect to WebSocket on port 3001
-    const wsHost = location.hostname || 'localhost';
-    const wsPort = parseInt(location.port || '3000') + 1;
-    const wsUrl = `ws://${wsHost}:${wsPort}`;
+    // Conectar al WebSocket en el MISMO puerto que el HTTP
+    // (antes usaba PORT+1 que Windows Firewall bloqueaba en red local)
+    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${location.host}`;
 
     if (onlineWs) {
         try { onlineWs.close(); } catch(e) {}
@@ -2586,6 +2599,17 @@ async function handleOnlineMsg(data) {
             statusEl.innerHTML = '✅ Conectado';
             break;
 
+        case 'queue_timeout': {
+            statusEl.innerHTML = '⏱️ No se encontró oponente. Intenta de nuevo.';
+            const matchBtnT = document.getElementById('onlineMatchBtn');
+            if (matchBtnT) {
+                matchBtnT.textContent = '🔍 Buscar Oponente';
+                matchBtnT.onclick = searchOnlineMatch;
+                matchBtnT.disabled = false;
+            }
+            break;
+        }
+
         case 'battle_start': {
             onlinePlayerIndex = data.playerIndex;
             const oppLevelDisplay = data.opponent.level || 1;
@@ -2622,8 +2646,11 @@ async function handleOnlineMsg(data) {
                 data.opponent.name,
                 data.opponent.robotType || 'classic',
                 data.opponent.level || 1,
-                DEFAULT_MOVES[data.opponent.robotType || 'classic'],
-                {},
+                // Usar moves reales del oponente si los envió, si no usar defaults
+                (data.opponent.moves && data.opponent.moves.length > 0)
+                    ? data.opponent.moves
+                    : DEFAULT_MOVES[data.opponent.robotType || 'classic'],
+                data.opponent.equipment || {},
                 false
             );
 

@@ -368,6 +368,14 @@ app.post('/api/auth/login', [
     });
 });
 
+// Verificar si token es válido (para persistencia de sesión)
+app.get('/api/auth/verify', authenticateToken, (req, res) => {
+    res.json({
+        message: 'Token válido',
+        user: { id: req.user.id, username: req.user.username }
+    });
+});
+
 // ========== Endpoints de Perfil de Usuario ==========
 
 // Obtener perfil completo

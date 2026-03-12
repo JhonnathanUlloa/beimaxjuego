@@ -2039,10 +2039,30 @@ function equipFromShop() {
 // ========== INIT ==========
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Siempre mostrar login al iniciar (borrar tokens guardados para forzar re-autenticación)
-    localStorage.removeItem('beimax_token');
-    sessionStorage.removeItem('beimax_token');
-    showScreen('authScreen');
+    // Verificar si hay sesión activa guardada
+    const savedToken = localStorage.getItem('beimax_token');
+    if (savedToken) {
+        // Validar token con el backend
+        validateToken(savedToken).then(isValid => {
+            if (isValid) {
+                // Token válido - sesión persiste
+                gameState.token = savedToken;
+                showDashboard();
+                initAllRobotTilts();
+            } else {
+                // Token inválido - ir a login
+                localStorage.removeItem('beimax_token');
+                showScreen('authScreen');
+            }
+        }).catch(() => {
+            // Error en validación - ir a login
+            localStorage.removeItem('beimax_token');
+            showScreen('authScreen');
+        });
+    } else {
+        // No hay sesión guardada - mostrar login
+        showScreen('authScreen');
+    }
 
     document.getElementById('loginPassword')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') handleLogin();
@@ -2052,3 +2072,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') checkImageAnswer();
     });
 });
+
+// Validar token con backend
+async function validateToken(token) {
+    try {
+        const res = await fetch('http://localhost:3000/api/auth/verify', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}

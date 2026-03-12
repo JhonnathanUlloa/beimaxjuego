@@ -526,9 +526,9 @@ body {
 
 /* Battle robot glasses size-override — battle robots scale down, type-specific rules must not override */
 .battle-robot-area .robot-glasses {
-    width: 42px !important;
-    height: 17px !important;
-    top: 48% !important;
+    width: 42px;
+    height: 17px;
+    top: 48%;
 }
 
 /* ============ DASHBOARD ============ */
@@ -2561,6 +2561,144 @@ body {
 .small .robot-earring { width: 7px; height: 11px; bottom: -5px; }
 .small .robot-shoe { width: 16px; height: 11px; bottom: -4px; }
 .small .robot-outfit-overlay { width: 100%; height: 100%; }
+
+/* ==================== ROBOT TYPE VARIANTS (SMALL SIZE FOR BATTLE) ==================== */
+/* Battle-sized robots with type-specific proportions */
+
+/* --- ATHLETIC (Masculine/Blue) - broad shoulders, muscular --- */
+.small.robot-type-athletic .robot-head {
+    width: 58px; height: 52px;
+    border-radius: 32% 32% 38% 38%;
+    background: linear-gradient(175deg, #f2f2fa 0%, #dde0ec 35%, #c8ccda 65%, #b0b6c8 100%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -1px 3px rgba(0,0,0,0.1);
+}
+.small.robot-type-athletic .robot-body {
+    width: 51px; height: 42px;
+    background: linear-gradient(175deg, #3a7bd5 0%, #2e60a8 30%, #224888 70%, #1a3668 100%);
+    border-radius: 10px 10px 13px 13px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.08);
+}
+.small.robot-type-athletic .robot-arm {
+    width: 14px; height: 34px;
+    background: linear-gradient(175deg, #2e60a8 0%, #224888 60%, #1a3668 100%);
+    border-radius: 7px;
+}
+.small.robot-type-athletic .robot-leg { width: 16px; height: 24px; background: linear-gradient(175deg, #224888 0%, #1a3668 60%, #122a4e 100%); }
+.small.robot-type-athletic .robot-waist { width: 40px; height: 7px; }
+.small.robot-type-athletic .robot-neck { width: 20px; height: 8px; }
+.small.robot-type-athletic .robot-foot { width: 20px; height: 9px; }
+.small.robot-type-athletic .robot-hand { width: 12px; height: 12px; }
+.small.robot-type-athletic .robot-ear { width: 9px; height: 16px; }
+.small.robot-type-athletic .robot-visor { height: 20px; border-radius: 6px; }
+.small.robot-type-athletic .robot-chest-plate { width: 20px; height: 20px; }
+.small.robot-type-athletic .robot-eyes { gap: 12px; }
+.small.robot-type-athletic .eye { width: 11px; height: 11px; background: radial-gradient(circle at 38% 32%, #7ab3ff 0%, #3a7bd5 45%, #224888 100%); box-shadow: 0 0 10px rgba(58,123,213,0.6), inset 0 -2px 3px rgba(0,0,0,0.3); }
+.small.robot-type-athletic .robot-glasses { width: 38px; height: 16px; }
+.small.robot-type-athletic .robot-hat { width: 30px; height: 22px; top: -12px; }
+.small.robot-type-athletic .robot-shoe { width: 17px; height: 10px; }
+.small.robot-type-athletic .robot-antenna::after { box-shadow: 0 0 10px rgba(58,123,213,0.7), 0 0 18px rgba(58,123,213,0.3); }
+
+/* --- SLIM (Feminine/Pink) - narrow, graceful, eyelashes --- */
+.small.robot-type-slim .robot-head {
+    width: 54px; height: 56px;
+    border-radius: 50% 50% 46% 46%;
+    background: linear-gradient(175deg, #fff5f8 0%, #f8e8ef 35%, #f0d5e2 65%, #e4c0d2 100%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12), inset 0 2px 4px rgba(255,255,255,0.5);
+}
+.small.robot-type-slim .robot-body {
+    width: 40px; height: 43px;
+    background: linear-gradient(175deg, #e84393 0%, #d63384 30%, #c92477 70%, #a91d63 100%);
+    border-radius: 13px 13px 16px 16px;
+}
+.small.robot-type-slim .robot-arm {
+    width: 10px; height: 33px;
+    background: linear-gradient(175deg, #d63384 0%, #c92477 60%, #a91d63 100%);
+    border-radius: 11px;
+}
+.small.robot-type-slim .robot-leg { width: 12px; height: 24px; background: linear-gradient(175deg, #c92477 0%, #a91d63 60%, #8b1852 100%); }
+.small.robot-type-slim .robot-waist { width: 30px; height: 5px; }
+.small.robot-type-slim .robot-neck { width: 15px; height: 7px; }
+.small.robot-type-slim .robot-foot { width: 16px; height: 8px; border-radius: 50%; }
+.small.robot-type-slim .robot-hand { width: 9px; height: 9px; border-radius: 50%; }
+.small.robot-type-slim .robot-ear { width: 7px; height: 16px; border-radius: 50%; transform: translateY(-50%) rotate(-6deg); }
+.small.robot-type-slim .robot-ear.ear-right { transform: translateY(-50%) rotate(6deg); }
+.small.robot-type-slim .robot-visor { height: 18px; border-radius: 8px; }
+.small.robot-type-slim .robot-chest-plate { width: 17px; height: 17px; border: 1.5px solid rgba(255,255,255,0.25); }
+.small.robot-type-slim .robot-eyes { gap: 11px; }
+.small.robot-type-slim .eye { width: 10px; height: 10px; background: radial-gradient(circle at 38% 32%, #ff9ecf 0%, #e84393 45%, #c92477 100%); box-shadow: 0 0 10px rgba(232,67,147,0.6); }
+.small.robot-type-slim .eye::before { top: -3px; width: 12px; height: 4px; border-top: 1.5px solid #c92477; }
+.small.robot-type-slim .robot-glasses { width: 36px; height: 16px; }
+.small.robot-type-slim .robot-hat { width: 28px; height: 21px; top: -12px; }
+.small.robot-type-slim .robot-shoe { width: 14px; height: 9px; }
+.small.robot-type-slim .robot-antenna::after { box-shadow: 0 0 10px rgba(232,67,147,0.7), 0 0 18px rgba(232,67,147,0.3); }
+
+/* --- TANK (Mecha/Robotic) - angular, compact, metallic, green LED --- */
+.small.robot-type-tank .robot-head {
+    width: 58px; height: 48px;
+    border-radius: 12% 12% 8% 8%;
+    background: linear-gradient(175deg, #555e6b 0%, #3d4550 35%, #2d343d 65%, #1e242b 100%);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25), inset 0 1px 3px rgba(255,255,255,0.1);
+}
+.small.robot-type-tank .robot-body {
+    width: 53px; height: 37px;
+    background: linear-gradient(175deg, #4a5568 0%, #3d4550 30%, #2d343d 70%, #1e242b 100%);
+    border-radius: 4px 4px 7px 7px;
+}
+.small.robot-type-tank .robot-arm {
+    width: 14px; height: 30px;
+    background: linear-gradient(175deg, #3d4550 0%, #2d343d 60%, #1e242b 100%);
+    border-radius: 3px;
+}
+.small.robot-type-tank .robot-leg { width: 16px; height: 20px; border-radius: 3px; background: linear-gradient(175deg, #2d343d 0%, #1e242b 60%, #151a20 100%); }
+.small.robot-type-tank .robot-waist { width: 40px; height: 8px; background: linear-gradient(180deg, #666e7a, #4a5568); }
+.small.robot-type-tank .robot-neck { width: 22px; height: 7px; }
+.small.robot-type-tank .robot-foot { width: 20px; height: 10px; border-radius: 2px 2px 6px 6px; }
+.small.robot-type-tank .robot-hand { width: 12px; height: 12px; border-radius: 3px; }
+.small.robot-type-tank .robot-ear { width: 10px; height: 13px; border-radius: 2px; background: linear-gradient(170deg, #4a5568, #2d343d); }
+.small.robot-type-tank .robot-visor { height: 17px; border-radius: 4px; background: linear-gradient(180deg, rgba(0,255,100,0.04), rgba(0,255,100,0.01)); }
+.small.robot-type-tank .robot-eyes { gap: 10px; }
+.small.robot-type-tank .eye { width: 10px; height: 7px; border-radius: 2px; background: linear-gradient(180deg, #00ff88 0%, #00cc66 100%); box-shadow: 0 0 12px rgba(0,255,100,0.7); }
+.small.robot-type-tank .robot-chest-plate { width: 18px; height: 18px; border-radius: 3px; border: 1.5px solid rgba(0,255,100,0.2 ); background: radial-gradient(circle at 36% 32%, rgba(0,255,100,0.15) 0%, transparent 55%); }
+.small.robot-type-tank .robot-glasses { width: 40px; height: 16px; }
+.small.robot-type-tank .robot-hat { width: 30px; height: 22px; top: -11px; }
+.small.robot-type-tank .robot-shoe { width: 17px; height: 11px; }
+.small.robot-type-tank .robot-antenna { background: linear-gradient(180deg, #4a5568, #2d343d); width: 4px; height: 13px; }
+.small.robot-type-tank .robot-antenna::after { box-shadow: 0 0 12px rgba(0,255,100,0.85), 0 0 20px rgba(0,255,100,0.3); width: 7px; height: 7px; top: -5px; }
+
+/* --- CUTE (Alien) - round, green glow, big eyes, teardrop head --- */
+.small.robot-type-cute .robot-head {
+    width: 58px; height: 62px;
+    border-radius: 50% 50% 42% 42%;
+    background: linear-gradient(175deg, #e8f5e9 0%, #c5e1c8 35%, #a5d6a7 65%, #81c784 100%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 0 14px rgba(76,175,80,0.12), inset 0 2px 4px rgba(255,255,255,0.5);
+}
+.small.robot-type-cute .robot-body {
+    width: 36px; height: 34px;
+    background: linear-gradient(175deg, #4caf50 0%, #388e3c 30%, #2e7d32 70%, #1b5e20 100%);
+    border-radius: 14px 14px 17px 17px;
+}
+.small.robot-type-cute .robot-arm {
+    width: 9px; height: 28px;
+    background: linear-gradient(175deg, #388e3c 0%, #2e7d32 60%, #1b5e20 100%);
+    border-radius: 11px;
+}
+.small.robot-type-cute .robot-leg { width: 10px; height: 18px; background: linear-gradient(175deg, #2e7d32 0%, #1b5e20 60%, #1a4e2a 100%); border-radius: 7px; }
+.small.robot-type-cute .robot-waist { width: 24px; height: 5px; }
+.small.robot-type-cute .robot-neck { width: 12px; height: 6px; }
+.small.robot-type-cute .robot-foot { width: 14px; height: 8px; border-radius: 50%; }
+.small.robot-type-cute .robot-hand { width: 8px; height: 8px; border-radius: 50%; }
+.small.robot-type-cute .robot-ear { width: 5px; height: 20px; border-radius: 50%; background: linear-gradient(170deg, #a5d6a7, #66bb6a); }
+.small.robot-type-cute .robot-ear::after { box-shadow: 0 0 7px rgba(118,255,3,0.5); }
+.small.robot-type-cute .robot-eyes { gap: 11px; }
+.small.robot-type-cute .eye { width: 11px; height: 12px; border-radius: 50% 50% 50% 50% / 35% 35% 55% 55%; background: radial-gradient(circle at 40% 35%, #b9f6ca 0%, #69f0ae 30%, #00e676 60%, #00c853 100%); box-shadow: 0 0 12px rgba(0,230,118,0.65), inset 0 -2px 3px rgba(0,0,0,0.15); }
+.small.robot-type-cute .eye::after { width: 3px; height: 3px; }
+.small.robot-type-cute .robot-visor { border-radius: 22px; height: 22px; background: linear-gradient(180deg, rgba(0,230,118,0.05), rgba(0,230,118,0.01)); }
+.small.robot-type-cute .robot-chest-plate { width: 15px; height: 15px; border: 1.5px solid rgba(0,230,118,0.25); background: radial-gradient(circle at 36% 32%, rgba(0,230,118,0.2) 0%, transparent 55%); }
+.small.robot-type-cute .robot-glasses { width: 40px; height: 18px; }
+.small.robot-type-cute .robot-hat { width: 30px; height: 25px; top: -14px; }
+.small.robot-type-cute .robot-shoe { width: 12px; height: 9px; }
+.small.robot-type-cute .robot-antenna { background: linear-gradient(180deg, #76ff03, #64dd17); width: 3px; height: 13px; }
+.small.robot-type-cute .robot-antenna::after { box-shadow: 0 0 12px rgba(0,230,118,0.9), 0 0 20px rgba(0,230,118,0.4); width: 8px; height: 8px; top: -5px; }
 
 /* ==================== ROBOT TYPE VARIANTS ==================== */
 /* Each robot type has unique visual identity + proportions */

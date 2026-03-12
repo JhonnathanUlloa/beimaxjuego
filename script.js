@@ -326,6 +326,31 @@ function showScreen(id) {
     if (screen) screen.classList.add('active');
 }
 
+// Navigation back map
+const backNavigation = {
+    'languageScreen': 'dashboardScreen',
+    'categoryScreen': 'languageScreen',
+    'gameModeScreen': 'categoryScreen',
+    'imageModeScreen': 'gameModeScreen',
+    'studyModeScreen': 'gameModeScreen',
+    'gameMode1Screen': 'gameModeScreen',
+    'shopScreen': 'dashboardScreen',
+    'wardrobeScreen': 'dashboardScreen',
+    'statsScreen': 'dashboardScreen',
+    'battleScreen': 'dashboardScreen',
+    'onlineBattleScreen': 'dashboardScreen'
+};
+
+function goBack() {
+    const currentScreen = document.querySelector('.screen.active');
+    if (!currentScreen) return;
+    const nextScreen = backNavigation[currentScreen.id];
+    if (nextScreen) {
+        if (nextScreen === 'dashboardScreen') showDashboard();
+        else showScreen(nextScreen);
+    }
+}
+
 function showDashboard() {
     updateDashboard();
     showScreen('dashboardScreen');

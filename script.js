@@ -2014,17 +2014,10 @@ function equipFromShop() {
 // ========== INIT ==========
 
 document.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('beimax_token') || sessionStorage.getItem('beimax_token');
-    if (saved) {
-        gameState.token = saved;
-        loadProfile().then(() => {
-            showDashboard();
-        }).catch(() => {
-            localStorage.removeItem('beimax_token');
-            sessionStorage.removeItem('beimax_token');
-            showScreen('authScreen');
-        });
-    }
+    // Siempre mostrar login al iniciar (borrar tokens guardados para forzar re-autenticación)
+    localStorage.removeItem('beimax_token');
+    sessionStorage.removeItem('beimax_token');
+    showScreen('authScreen');
 
     document.getElementById('loginPassword')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') handleLogin();

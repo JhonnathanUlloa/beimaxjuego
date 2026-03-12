@@ -1286,8 +1286,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
     wss.on('close', () => clearInterval(heartbeat));
 
-    console.log(`⚔️  WebSocket Batallas: ws://localhost:${WS_PORT}`);
-    console.log(`⚔️  WebSocket Red:      ws://${localIP}:${WS_PORT}`);
+    console.log(`⚔️  WebSocket Batallas: ws://localhost:${PORT} (mismo puerto HTTP)`);
 
     // Try to start HTTPS server
     const certs = ensureCerts();

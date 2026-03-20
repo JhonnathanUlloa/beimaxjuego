@@ -46,152 +46,153 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 function initializeDatabase() {
-    // Tabla de usuarios
-    db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            character_name TEXT DEFAULT 'BeiBot',
-            age INTEGER DEFAULT 10,
-            gender TEXT DEFAULT 'other',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-
-    // Tabla de perfiles de usuario
-    db.run(`
-        CREATE TABLE IF NOT EXISTS user_profiles (
-            user_id INTEGER PRIMARY KEY,
-            native_language TEXT DEFAULT 'es',
-            learning_language TEXT DEFAULT 'en',
-            coins INTEGER DEFAULT 0,
-            level INTEGER DEFAULT 1,
-            experience INTEGER DEFAULT 0,
-            current_streak INTEGER DEFAULT 0,
-            longest_streak INTEGER DEFAULT 0,
-            last_play_date DATE,
-            total_games_played INTEGER DEFAULT 0,
-            total_correct_answers INTEGER DEFAULT 0,
-            total_wrong_answers INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
-    // Tabla de personalización del robot
-    db.run(`
-        CREATE TABLE IF NOT EXISTS robot_customization (
-            user_id INTEGER PRIMARY KEY,
-            body_color TEXT DEFAULT '#E74856',
-            eye_color TEXT DEFAULT '#E74856',
-            hat TEXT DEFAULT NULL,
-            glasses TEXT DEFAULT NULL,
-            bowtie TEXT DEFAULT NULL,
-            earring TEXT DEFAULT NULL,
-            shoes TEXT DEFAULT NULL,
-            outfit TEXT DEFAULT 'none',
-            inventory TEXT DEFAULT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
-    // Tabla de progreso por categoría
-    db.run(`
-        CREATE TABLE IF NOT EXISTS category_progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            category TEXT NOT NULL,
-            level INTEGER DEFAULT 1,
-            games_played INTEGER DEFAULT 0,
-            correct_answers INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
-    // Tabla de logros
-    db.run(`
-        CREATE TABLE IF NOT EXISTS achievements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            achievement_type TEXT NOT NULL,
-            unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
-    // Tabla de historial de rachas
-    db.run(`
-        CREATE TABLE IF NOT EXISTS streak_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            date DATE NOT NULL,
-            games_played INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
-    // Migration: Add inventory column if it doesn't exist
-    db.run(`
-        ALTER TABLE robot_customization ADD COLUMN inventory TEXT DEFAULT NULL
-    `, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
-            console.log('⚠️  Error adding inventory column (may already exist):', err.message);
-        }
-    });
-
-    // Migration: Add outfit column if it doesn't exist
-    db.run(`
-        ALTER TABLE robot_customization ADD COLUMN outfit TEXT DEFAULT 'none'
-    `, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
-            console.log('⚠️  Error adding outfit column (may already exist):', err.message);
-        }
-    });
-
-    // Migration: Add robot_type column if it doesn't exist
-    db.run(`
-        ALTER TABLE users ADD COLUMN robot_type TEXT DEFAULT 'classic'
-    `, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
-            console.log('⚠️  Error adding robot_type column (may already exist):', err.message);
-        }
-    });
-
-    // Migration: Add unique index on streak_history (user_id, date) for ON CONFLICT
-    db.run(`
-        DELETE FROM streak_history WHERE id NOT IN (
-            SELECT MIN(id) FROM streak_history GROUP BY user_id, date
-        )
-    `, () => {
+    db.serialize(() => {
+        // Tabla de usuarios
         db.run(`
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_streak_history_user_date 
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                character_name TEXT DEFAULT 'BeiBot',
+                age INTEGER DEFAULT 10,
+                gender TEXT DEFAULT 'other',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Tabla de perfiles de usuario
+        db.run(`
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id INTEGER PRIMARY KEY,
+                native_language TEXT DEFAULT 'es',
+                learning_language TEXT DEFAULT 'en',
+                coins INTEGER DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                experience INTEGER DEFAULT 0,
+                current_streak INTEGER DEFAULT 0,
+                longest_streak INTEGER DEFAULT 0,
+                last_play_date DATE,
+                total_games_played INTEGER DEFAULT 0,
+                total_correct_answers INTEGER DEFAULT 0,
+                total_wrong_answers INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Tabla de personalización del robot
+        db.run(`
+            CREATE TABLE IF NOT EXISTS robot_customization (
+                user_id INTEGER PRIMARY KEY,
+                body_color TEXT DEFAULT '#E74856',
+                eye_color TEXT DEFAULT '#E74856',
+                hat TEXT DEFAULT NULL,
+                glasses TEXT DEFAULT NULL,
+                bowtie TEXT DEFAULT NULL,
+                earring TEXT DEFAULT NULL,
+                shoes TEXT DEFAULT NULL,
+                outfit TEXT DEFAULT 'none',
+                inventory TEXT DEFAULT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Tabla de progreso por categoría
+        db.run(`
+            CREATE TABLE IF NOT EXISTS category_progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                category TEXT NOT NULL,
+                level INTEGER DEFAULT 1,
+                games_played INTEGER DEFAULT 0,
+                correct_answers INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Tabla de logros
+        db.run(`
+            CREATE TABLE IF NOT EXISTS achievements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                achievement_type TEXT NOT NULL,
+                unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Tabla de historial de rachas
+        db.run(`
+            CREATE TABLE IF NOT EXISTS streak_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date DATE NOT NULL,
+                games_played INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Migration: Add inventory column if it doesn't exist
+        db.run(`
+            ALTER TABLE robot_customization ADD COLUMN inventory TEXT DEFAULT NULL
+        `, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                console.log('⚠️  Error adding inventory column (may already exist):', err.message);
+            }
+        });
+
+        // Migration: Add outfit column if it doesn't exist
+        db.run(`
+            ALTER TABLE robot_customization ADD COLUMN outfit TEXT DEFAULT 'none'
+        `, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                console.log('⚠️  Error adding outfit column (may already exist):', err.message);
+            }
+        });
+
+        // Migration: Add robot_type column if it doesn't exist
+        db.run(`
+            ALTER TABLE users ADD COLUMN robot_type TEXT DEFAULT 'classic'
+        `, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                console.log('⚠️  Error adding robot_type column (may already exist):', err.message);
+            }
+        });
+
+        // Migration: Add unique index on streak_history (user_id, date) for ON CONFLICT
+        db.run(`
+            DELETE FROM streak_history WHERE id NOT IN (
+                SELECT MIN(id) FROM streak_history GROUP BY user_id, date
+            )
+        `);
+
+        db.run(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_streak_history_user_date
             ON streak_history(user_id, date)
         `, (err) => {
             if (err) {
                 console.log('⚠️  streak_history index:', err.message);
             }
         });
+
+        // Tabla de datos de batalla
+        db.run(`
+            CREATE TABLE IF NOT EXISTS battle_data (
+                user_id INTEGER PRIMARY KEY,
+                battle_inventory TEXT DEFAULT '{"weapons":[],"shields":[],"modules":[]}',
+                battle_equipment TEXT DEFAULT '{"weapon":null,"shield":null,"module":null}',
+                selected_moves TEXT DEFAULT '[]',
+                battle_wins INTEGER DEFAULT 0,
+                battle_losses INTEGER DEFAULT 0,
+                battle_rating INTEGER DEFAULT 1000,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `, () => {
+            console.log('✅ Tablas de base de datos inicializadas');
+            // Crear usuario admin cuando el esquema ya está listo
+            createAdminUser();
+        });
     });
-
-    console.log('✅ Tablas de base de datos inicializadas');
-
-    // Tabla de datos de batalla
-    db.run(`
-        CREATE TABLE IF NOT EXISTS battle_data (
-            user_id INTEGER PRIMARY KEY,
-            battle_inventory TEXT DEFAULT '{"weapons":[],"shields":[],"modules":[]}',
-            battle_equipment TEXT DEFAULT '{"weapon":null,"shield":null,"module":null}',
-            selected_moves TEXT DEFAULT '[]',
-            battle_wins INTEGER DEFAULT 0,
-            battle_losses INTEGER DEFAULT 0,
-            battle_rating INTEGER DEFAULT 1000,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-    
-    // Crear usuario admin si no existe
-    createAdminUser();
 }
 
 async function createAdminUser() {

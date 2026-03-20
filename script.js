@@ -595,16 +595,23 @@ function setupQuizRouletteWheel() {
     wheel.querySelectorAll('.quiz-roulette-label').forEach(el => el.remove());
     const slices = QUIZ_ROULETTE_LABELS.length;
     const step = 360 / slices;
-    const radius = 33;
+    const wheelSize = wheel.clientWidth || 300;
+    const radiusPx = Math.round(wheelSize * 0.34);
 
     QUIZ_ROULETTE_LABELS.forEach((label, idx) => {
         const mid = idx * step + step / 2;
         const text = document.createElement('div');
         text.className = 'quiz-roulette-label';
         text.textContent = label;
-        text.style.transform = `rotate(${mid}deg) translate(${radius}%) rotate(${mid > 90 && mid < 270 ? 180 : 0}deg)`;
+        text.style.transform = `translate(-50%, -50%) rotate(${mid}deg) translate(0, -${radiusPx}px) rotate(${-mid}deg)`;
         wheel.appendChild(text);
     });
+}
+
+function setQuizQuestionVisibility(visible) {
+    const area = document.getElementById('quizQuestionArea');
+    if (!area) return;
+    area.classList.toggle('is-hidden', !visible);
 }
 
 function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
@@ -622,9 +629,14 @@ function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
 
     onlineEnglishState.rouletteRotation += extraTurns + target;
 
+    wheel.classList.add('is-spinning');
     wheel.style.transitionDuration = `${Math.max(1200, durationMs)}ms`;
     wheel.style.setProperty('--rotation', `${onlineEnglishState.rouletteRotation}deg`);
     if (resultEl) resultEl.textContent = `Resultado: ${selectedLabel}`;
+
+    setTimeout(() => {
+        wheel.classList.remove('is-spinning');
+    }, Math.max(1200, durationMs) + 100);
 }
 
 function setOnlineEnglishStatus(text) {
@@ -842,6 +854,14 @@ function updateOnlineEnglishScoreboard() {
 
 function startOnlineEnglishRoulette(selectedCategory, durationMs) {
     setupQuizRouletteWheel();
+    setQuizQuestionVisibility(false);
+    const input = document.getElementById('quizAnswerInput');
+    const submit = document.getElementById('quizSubmitBtn');
+    if (input) {
+        input.value = '';
+        input.disabled = true;
+    }
+    if (submit) submit.disabled = true;
     spinRouletteToLabel(selectedCategory || 'Libre', durationMs || 2200);
 }
 
@@ -858,6 +878,8 @@ function startOnlineEnglishRound(data) {
     const feedback = document.getElementById('quizFeedback');
     const input = document.getElementById('quizAnswerInput');
     const submit = document.getElementById('quizSubmitBtn');
+
+    setQuizQuestionVisibility(true);
 
     if (roundText) roundText.textContent = `Ronda ${data.round}/${data.totalRounds}`;
     if (category) category.textContent = `🎯 ${data.category}`;

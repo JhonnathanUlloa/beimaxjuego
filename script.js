@@ -622,8 +622,10 @@ function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
     const labels = QUIZ_ROULETTE_LABELS;
     const idx = Math.max(0, labels.findIndex(l => l.toLowerCase() === String(selectedLabel || '').toLowerCase()));
     const slice = 360 / labels.length;
+    // Conic gradient uses 0deg at top and grows clockwise.
     const centerDeg = idx * slice + slice / 2;
-    const pointerDeg = 180;
+    // Pointer is placed on the left side of the wheel.
+    const pointerDeg = 270;
     const extraTurns = 360 * (4 + Math.floor(Math.random() * 3));
     const target = pointerDeg - centerDeg;
 

@@ -321,19 +321,19 @@
             <div class="category-grid">
                 <button class="category-btn" onclick="selectCategory('kitchen')">
                     <div class="category-icon">🍳</div><h3>Cocina</h3><p>Utensilios y objetos</p>
-                    <div class="category-badge">8 palabras</div>
+                    <div class="category-badge">100+ palabras</div>
                 </button>
                 <button class="category-btn" onclick="selectCategory('office')">
                     <div class="category-icon">💼</div><h3>Oficina</h3><p>Material de trabajo</p>
-                    <div class="category-badge">8 palabras</div>
+                    <div class="category-badge">100+ palabras</div>
                 </button>
                 <button class="category-btn" onclick="selectCategory('workshop')">
                     <div class="category-icon">🔧</div><h3>Taller</h3><p>Herramientas</p>
-                    <div class="category-badge">8 palabras</div>
+                    <div class="category-badge">100+ palabras</div>
                 </button>
                 <button class="category-btn" onclick="selectCategory('home')">
                     <div class="category-icon">🏠</div><h3>Hogar</h3><p>Objetos del hogar</p>
-                    <div class="category-badge">8 palabras</div>
+                    <div class="category-badge">100+ palabras</div>
                 </button>
             </div>
         </div>
@@ -344,7 +344,21 @@
         <div class="container">
             <button class="btn-back" onclick="showCategoryScreen()">← Atrás</button>
             <h2 class="screen-title">Elige cómo practicar</h2>
+            <div class="difficulty-selector">
+                <div class="difficulty-title">Dificultad de vocabulario</div>
+                <div class="difficulty-buttons">
+                    <button class="difficulty-btn" data-difficulty="easy" onclick="setLanguageDifficulty('easy')">Fácil</button>
+                    <button class="difficulty-btn active" data-difficulty="medium" onclick="setLanguageDifficulty('medium')">Media</button>
+                    <button class="difficulty-btn" data-difficulty="hard" onclick="setLanguageDifficulty('hard')">Difícil</button>
+                </div>
+            </div>
             <div class="game-modes">
+                <button class="game-mode-btn online-english" onclick="showOnlineEnglishLobby()">
+                    <div class="mode-icon">🌐</div>
+                    <h3>Duelo Online Inglés</h3>
+                    <p>Ruleta de categorías, misma palabra para ambos y reloj en vivo.</p>
+                    <span class="mode-badge hot">⚡ PvP en tiempo real</span>
+                </button>
                 <button class="game-mode-btn" onclick="startGameMode1()">
                     <div class="mode-icon">📷</div>
                     <h3>Modo Cámara</h3>
@@ -1056,6 +1070,89 @@
                         <li>Ambos presionan "Buscar Oponente"</li>
                         <li>El servidor los empareja automáticamente</li>
                     </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== DUELO ONLINE INGLÉS ==================== -->
+    <div id="onlineEnglishLobbyScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="exitOnlineEnglishLobby()">← Atrás</button>
+            <h2 class="screen-title">🌍 Duelo Online Inglés</h2>
+            <div class="online-status-card">
+                <div class="online-status" id="onlineEnglishStatus">Conectando...</div>
+                <div class="online-quiz-options">
+                    <label for="onlineQuizCategoryMode">Modo de categoría</label>
+                    <select id="onlineQuizCategoryMode" onchange="onOnlineQuizCategoryModeChange()">
+                        <option value="roulette" selected>Ruleta aleatoria</option>
+                        <option value="fixed">Libre (yo elijo categoría)</option>
+                    </select>
+                    <select id="onlineQuizFixedCategory" style="display:none">
+                        <option value="kitchen">Cocina</option>
+                        <option value="office">Oficina</option>
+                        <option value="workshop">Taller</option>
+                        <option value="home">Hogar</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-full" id="onlineEnglishMatchBtn" disabled>
+                    🔍 Buscar Rival
+                </button>
+                <div class="online-help">
+                    <p>📌 <strong>Reglas rápidas</strong></p>
+                    <ol>
+                        <li>Ambos reciben la misma palabra al mismo tiempo</li>
+                        <li>La palabra sale en tu idioma nativo y respondes en tu idioma de aprendizaje</li>
+                        <li>Quien suma más puntos gana más monedas</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="onlineEnglishMatchScreen" class="screen">
+        <div class="container">
+            <button class="btn-back" onclick="exitOnlineEnglishMatch()">← Salir</button>
+            <h2 class="screen-title">⚡ Duelo en curso</h2>
+            <div class="online-quiz-card">
+                <div class="online-quiz-head">
+                    <div class="quiz-player-box">
+                        <span class="quiz-player-label">Tú</span>
+                        <strong id="quizYouName">Jugador</strong>
+                        <small id="quizYouScore">0 pts</small>
+                    </div>
+                    <div class="quiz-round-box">
+                        <div id="quizRoundText">Ronda 1/6</div>
+                        <div id="quizTimerText">15s</div>
+                    </div>
+                    <div class="quiz-player-box opponent">
+                        <span class="quiz-player-label">Rival</span>
+                        <strong id="quizOppName">Esperando...</strong>
+                        <small id="quizOppScore">0 pts</small>
+                    </div>
+                </div>
+
+                <div class="quiz-roulette-stage">
+                    <div class="quiz-roulette-pointer">◀</div>
+                    <div class="quiz-roulette-wheel-wrap">
+                        <div class="quiz-roulette-wheel" id="quizRouletteWheel">
+                            <div class="quiz-roulette-center"></div>
+                        </div>
+                    </div>
+                    <div class="quiz-roulette-result" id="quizRouletteResult">Preparando ruleta...</div>
+                </div>
+
+                <div class="quiz-question-area">
+                    <div class="quiz-meta">
+                        <span id="quizCategoryLabel">Categoría</span>
+                        <span id="quizPromptLang">ES</span>
+                    </div>
+                    <div class="quiz-prompt" id="quizPromptWord">...</div>
+                    <div class="quiz-input-row">
+                        <input id="quizAnswerInput" type="text" placeholder="Escribe la traducción" maxlength="60" autocomplete="off" />
+                        <button class="btn btn-primary" id="quizSubmitBtn" onclick="submitOnlineEnglishAnswer()">Enviar</button>
+                    </div>
+                    <div class="quiz-feedback" id="quizFeedback">Esperando inicio de ronda...</div>
                 </div>
             </div>
         </div>

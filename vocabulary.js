@@ -367,6 +367,223 @@ const categoryData = {
     }
 };
 
+// ========== EXPANSION PACK (más variedad para reducir repeticiones) ==========
+// Se agregan palabras nuevas por categoría en los 3 idiomas con pronunciación aproximada.
+const categoryDataExpansion = {
+    kitchen: [
+        {emoji:'🥫', es:'lata', en:'can', fr:'boîte', pron_es:'LA-ta', pron_en:'kan', pron_fr:'buat'},
+        {emoji:'🧃', es:'pajita', en:'straw', fr:'paille', pron_es:'pa-JI-ta', pron_en:'straw', pron_fr:'pay'},
+        {emoji:'🥤', es:'batido', en:'milkshake', fr:'milkshake', pron_es:'ba-TI-do', pron_en:'MILK-sheik', pron_fr:'milk-SHEIK'},
+        {emoji:'🫙', es:'mermelada', en:'jam', fr:'confiture', pron_es:'mer-me-LA-da', pron_en:'yam', pron_fr:'kon-fi-TÜR'},
+        {emoji:'🧁', es:'glaseado', en:'icing', fr:'glaçage', pron_es:'gla-se-A-do', pron_en:'AI-sing', pron_fr:'gla-SASH'},
+        {emoji:'🍖', es:'costilla', en:'rib', fr:'côte', pron_es:'kos-TI-ya', pron_en:'rib', pron_fr:'kot'},
+        {emoji:'🍗', es:'muslo', en:'drumstick', fr:'pilon', pron_es:'MUS-lo', pron_en:'DRAM-stik', pron_fr:'pi-LON'},
+        {emoji:'🍤', es:'camarón', en:'shrimp', fr:'crevette', pron_es:'ka-ma-RÓN', pron_en:'shrimp', pron_fr:'kre-VET'},
+        {emoji:'🧂', es:'azúcar', en:'sugar', fr:'sucre', pron_es:'a-SÚ-kar', pron_en:'SHU-gar', pron_fr:'SUKR'},
+        {emoji:'🫒', es:'vinagre', en:'vinegar', fr:'vinaigre', pron_es:'bi-NA-gre', pron_en:'VI-ne-gar', pron_fr:'vi-NEGR'},
+        {emoji:'🥫', es:'salsa', en:'sauce', fr:'sauce', pron_es:'SAL-sa', pron_en:'sos', pron_fr:'sos'},
+        {emoji:'🍲', es:'guiso', en:'stew', fr:'ragoût', pron_es:'GUI-so', pron_en:'stiú', pron_fr:'ra-GÚ'},
+        {emoji:'🍛', es:'curry', en:'curry', fr:'curry', pron_es:'KA-rri', pron_en:'KA-ri', pron_fr:'kü-RI'},
+        {emoji:'🥟', es:'empanadilla', en:'dumpling', fr:'ravioli', pron_es:'em-pa-na-DI-ya', pron_en:'DAM-pling', pron_fr:'ra-vio-LI'},
+        {emoji:'🍘', es:'galleta de arroz', en:'rice cracker', fr:'galette de riz', pron_es:'ga-YE-ta de a-RROS', pron_en:'rais KRA-ker', pron_fr:'ga-LET de rí'},
+        {emoji:'🥠', es:'galleta de la suerte', en:'fortune cookie', fr:'biscuit chinois', pron_es:'ga-YE-ta de la SUER-te', pron_en:'FOR-chun KU-ki', pron_fr:'bis-KÜI shi-NUÁ'},
+        {emoji:'🧈', es:'margarina', en:'margarine', fr:'margarine', pron_es:'mar-ga-RI-na', pron_en:'MAR-ga-rin', pron_fr:'mar-ga-RIN'},
+        {emoji:'🍶', es:'vinera', en:'decanter', fr:'carafe à vin', pron_es:'bi-NE-ra', pron_en:'di-KAN-ter', pron_fr:'ka-RAF a van'},
+        {emoji:'🥛', es:'jarra medidora', en:'measuring jug', fr:'verre doseur', pron_es:'JA-rra me-di-DO-ra', pron_en:'ME-zhur-ing yag', pron_fr:'ver do-ZÉR'},
+        {emoji:'🫙', es:'especiero', en:'spice rack', fr:'porte-épices', pron_es:'es-pe-SIÉ-ro', pron_en:'spais rak', pron_fr:'port e-PIS'},
+        {emoji:'🥪', es:'sándwich', en:'sandwich', fr:'sandwich', pron_es:'SAND-uich', pron_en:'SAND-uich', pron_fr:'sand-UICH'},
+        {emoji:'🍙', es:'bola de arroz', en:'rice ball', fr:'boule de riz', pron_es:'BO-la de a-RROS', pron_en:'rais bol', pron_fr:'bul de rí'},
+        {emoji:'🍥', es:'pastel de pescado', en:'fish cake', fr:'gâteau de poisson', pron_es:'pas-TEL de pes-KA-do', pron_en:'fish keik', pron_fr:'ga-TÓ de pua-SÓN'},
+        {emoji:'🥡', es:'caja para llevar', en:'takeout box', fr:'boîte à emporter', pron_es:'KA-ja pa-ra ye-BAR', pron_en:'TEI-kaut boks', pron_fr:'buat a am-por-TÉ'},
+        {emoji:'🍱', es:'fiambrera', en:'lunch box', fr:'boîte repas', pron_es:'fiam-BRE-ra', pron_en:'lanch boks', pron_fr:'buat re-PA'},
+        {emoji:'🍾', es:'corcho', en:'cork', fr:'bouchon', pron_es:'KOR-cho', pron_en:'kork', pron_fr:'bu-SHÓN'},
+        {emoji:'🥄', es:'espumadera', en:'skimmer', fr:'écumoire', pron_es:'es-pu-ma-DE-ra', pron_en:'SKI-mer', pron_fr:'e-kü-MUÁR'},
+        {emoji:'🍝', es:'colador', en:'strainer', fr:'passoire', pron_es:'ko-la-DOR', pron_en:'STREI-ner', pron_fr:'pa-SUÁR'},
+        {emoji:'🍯', es:'sirope', en:'syrup', fr:'sirop', pron_es:'si-RO-pe', pron_en:'SI-rup', pron_fr:'si-RO'},
+        {emoji:'🍐', es:'pera', en:'pear', fr:'poire', pron_es:'PE-ra', pron_en:'per', pron_fr:'puar'}
+    ],
+    office: [
+        {emoji:'🧾', es:'factura', en:'invoice', fr:'facture', pron_es:'fak-TU-ra', pron_en:'IN-vois', pron_fr:'fak-TÜR'},
+        {emoji:'📦', es:'paquete', en:'package', fr:'colis', pron_es:'pa-KE-te', pron_en:'PA-kich', pron_fr:'ko-LÍ'},
+        {emoji:'📬', es:'correo postal', en:'mail', fr:'courrier', pron_es:'ko-RRE-o pos-TAL', pron_en:'meil', pron_fr:'ku-RIÉ'},
+        {emoji:'🪪', es:'credencial', en:'badge', fr:'badge', pron_es:'kre-den-SIAL', pron_en:'bach', pron_fr:'badj'},
+        {emoji:'🧠', es:'idea', en:'idea', fr:'idée', pron_es:'i-DE-a', pron_en:'ai-DI-a', pron_fr:'i-DE'},
+        {emoji:'🗒️', es:'bloc de notas', en:'notepad', fr:'bloc-notes', pron_es:'blok de NO-tas', pron_en:'NOT-pad', pron_fr:'blok-NOT'},
+        {emoji:'📎', es:'sujetapapeles', en:'binder clip', fr:'pince', pron_es:'su-je-ta-pa-PE-les', pron_en:'BAIN-der klip', pron_fr:'pins'},
+        {emoji:'🗓️', es:'reunión', en:'meeting', fr:'réunion', pron_es:'re-u-NIÓN', pron_en:'MII-ting', pron_fr:'re-u-NIÓN'},
+        {emoji:'📈', es:'crecimiento', en:'growth', fr:'croissance', pron_es:'kre-si-MIÉN-to', pron_en:'grouz', pron_fr:'krwa-SÁNS'},
+        {emoji:'📉', es:'caída', en:'drop', fr:'baisse', pron_es:'ka-Í-da', pron_en:'drop', pron_fr:'bes'},
+        {emoji:'🧮', es:'presupuesto', en:'budget', fr:'budget', pron_es:'pre-su-PUES-to', pron_en:'BA-chet', pron_fr:'bü-JÉ'},
+        {emoji:'📊', es:'estadística', en:'statistic', fr:'statistique', pron_es:'es-ta-DÍS-ti-ka', pron_en:'sta-TIS-tik', pron_fr:'sta-tis-TIK'},
+        {emoji:'🗂️', es:'expediente', en:'record', fr:'dossier', pron_es:'eks-pe-DIÉN-te', pron_en:'RE-kord', pron_fr:'do-SIÉ'},
+        {emoji:'🖇️', es:'encuadernación', en:'binding', fr:'reliure', pron_es:'en-kua-der-na-SIÓN', pron_en:'BAIN-ding', pron_fr:'re-li-ÜR'},
+        {emoji:'📍', es:'ubicación', en:'location', fr:'emplacement', pron_es:'u-bi-ka-SIÓN', pron_en:'lou-KEI-shon', pron_fr:'am-plas-MÁN'},
+        {emoji:'🧭', es:'dirección', en:'direction', fr:'direction', pron_es:'di-rek-SIÓN', pron_en:'di-REK-shon', pron_fr:'di-rek-SIÓN'},
+        {emoji:'📨', es:'mensaje', en:'message', fr:'message', pron_es:'men-SA-je', pron_en:'ME-sich', pron_fr:'me-SASH'},
+        {emoji:'🔐', es:'contraseña', en:'password', fr:'mot de passe', pron_es:'kon-tra-SE-ña', pron_en:'PAS-uord', pron_fr:'mo de pas'},
+        {emoji:'🖥️', es:'servidor', en:'server', fr:'serveur', pron_es:'ser-bi-DOR', pron_en:'SER-ver', pron_fr:'ser-VÉR'},
+        {emoji:'🌐', es:'navegador', en:'browser', fr:'navigateur', pron_es:'na-be-ga-DOR', pron_en:'BRAU-ser', pron_fr:'na-vi-ga-TÉR'},
+        {emoji:'🧑‍💼', es:'gerente', en:'manager', fr:'manager', pron_es:'ge-REN-te', pron_en:'MA-ni-yer', pron_fr:'ma-na-JÉR'},
+        {emoji:'👩‍💼', es:'secretaria', en:'secretary', fr:'secrétaire', pron_es:'se-kre-TA-ria', pron_en:'SE-kre-te-ri', pron_fr:'se-kre-TÉR'},
+        {emoji:'👨‍💻', es:'programador', en:'developer', fr:'développeur', pron_es:'pro-gra-ma-DOR', pron_en:'di-VE-lo-per', pron_fr:'de-ve-lo-PÉR'},
+        {emoji:'🧑‍🏫', es:'formación', en:'training', fr:'formation', pron_es:'for-ma-SIÓN', pron_en:'TREI-ning', pron_fr:'for-ma-SIÓN'},
+        {emoji:'⏰', es:'plazo', en:'deadline', fr:'échéance', pron_es:'PLA-so', pron_en:'DED-lain', pron_fr:'e-she-ÁNS'},
+        {emoji:'🗃️', es:'respaldo', en:'backup', fr:'sauvegarde', pron_es:'res-PAL-do', pron_en:'BAK-ap', pron_fr:'so-ve-GARD'},
+        {emoji:'🧯', es:'emergencia', en:'emergency', fr:'urgence', pron_es:'e-mer-JÉN-sia', pron_en:'i-MER-yen-si', pron_fr:'ür-JÁNS'},
+        {emoji:'✅', es:'aprobación', en:'approval', fr:'approbation', pron_es:'a-pro-ba-SIÓN', pron_en:'a-PRU-val', pron_fr:'a-pro-ba-SIÓN'},
+        {emoji:'❌', es:'rechazo', en:'rejection', fr:'rejet', pron_es:'re-CHA-so', pron_en:'ri-YEK-shon', pron_fr:'re-ZHÉ'},
+        {emoji:'📑', es:'acta', en:'minutes', fr:'procès-verbal', pron_es:'AK-ta', pron_en:'MI-nits', pron_fr:'pro-se ver-BAL'}
+    ],
+    workshop: [
+        {emoji:'🛠️', es:'yunque', en:'anvil', fr:'enclume', pron_es:'YUN-ke', pron_en:'AN-vil', pron_fr:'an-KLÜM'},
+        {emoji:'🧯', es:'mascarilla', en:'mask', fr:'masque', pron_es:'mas-ka-RI-ya', pron_en:'mask', pron_fr:'mask'},
+        {emoji:'🥽', es:'gafas de seguridad', en:'safety goggles', fr:'lunettes de sécurité', pron_es:'GA-fas de se-gu-ri-DAD', pron_en:'SEI-fi GO-gols', pron_fr:'lü-NET de se-kü-ri-TÉ'},
+        {emoji:'🧤', es:'guantes de trabajo', en:'work gloves', fr:'gants de travail', pron_es:'GUAN-tes de tra-BA-jo', pron_en:'uerk glavs', pron_fr:'gan de tra-VAY'},
+        {emoji:'🧰', es:'torno', en:'lathe', fr:'tour', pron_es:'TOR-no', pron_en:'leiz', pron_fr:'tur'},
+        {emoji:'🛞', es:'rueda', en:'wheel', fr:'roue', pron_es:'RUE-da', pron_en:'uíl', pron_fr:'rú'},
+        {emoji:'🪚', es:'sierra de calar', en:'jigsaw', fr:'scie sauteuse', pron_es:'SIE-ra de ka-LAR', pron_en:'JIG-so', pron_fr:'si so-TÉZ'},
+        {emoji:'🪛', es:'atornillador', en:'power screwdriver', fr:'visseuse', pron_es:'a-tor-ni-ya-DOR', pron_en:'PAU-er skru-drai-ver', pron_fr:'vi-SÉZ'},
+        {emoji:'🧱', es:'hormigón', en:'concrete', fr:'béton', pron_es:'or-mi-GÓN', pron_en:'KON-kriit', pron_fr:'be-TÓN'},
+        {emoji:'🏗️', es:'andamio tubular', en:'scaffolding', fr:'échafaudage', pron_es:'an-DA-mio tu-bu-LAR', pron_en:'SKA-fol-ding', pron_fr:'e-sha-fo-DASH'},
+        {emoji:'⚙️', es:'cojinete', en:'bearing', fr:'roulement', pron_es:'ko-ji-NE-te', pron_en:'BE-ring', pron_fr:'rul-MÁN'},
+        {emoji:'🧲', es:'soldadura', en:'welding', fr:'soudure', pron_es:'sol-da-DU-ra', pron_en:'UEL-ding', pron_fr:'su-DÜR'},
+        {emoji:'🔥', es:'soplete', en:'torch', fr:'chalumeau', pron_es:'so-PLE-te', pron_en:'torch', pron_fr:'sha-lü-MÓ'},
+        {emoji:'🧪', es:'resina', en:'resin', fr:'résine', pron_es:'re-SI-na', pron_en:'RE-zin', pron_fr:'re-ZIN'},
+        {emoji:'🧴', es:'disolvente', en:'solvent', fr:'solvant', pron_es:'di-sol-BÉN-te', pron_en:'SOL-vent', pron_fr:'sol-VÁN'},
+        {emoji:'🪵', es:'listón', en:'strip wood', fr:'liteau', pron_es:'lis-TÓN', pron_en:'strip uud', pron_fr:'li-TÓ'},
+        {emoji:'📐', es:'escuadra metálica', en:'metal square', fr:'équerre métallique', pron_es:'es-KUA-dra me-TA-li-ka', pron_en:'ME-tal skuer', pron_fr:'e-KER me-ta-LIK'},
+        {emoji:'📏', es:'calibrador', en:'caliper', fr:'pied à coulisse', pron_es:'ka-li-bra-DOR', pron_en:'KA-li-per', pron_fr:'pie a ku-LIS'},
+        {emoji:'🪝', es:'mosquetón', en:'carabiner', fr:'mousqueton', pron_es:'mos-ke-TÓN', pron_en:'KA-ra-bi-ner', pron_fr:'mus-ke-TÓN'},
+        {emoji:'🧷', es:'pasador', en:'pin', fr:'goupille', pron_es:'pa-sa-DOR', pron_en:'pin', pron_fr:'gu-PIY'},
+        {emoji:'🔩', es:'remache', en:'rivet', fr:'rivet', pron_es:'re-MA-che', pron_en:'RI-vet', pron_fr:'ri-VÉ'},
+        {emoji:'🧲', es:'compresor', en:'compressor', fr:'compresseur', pron_es:'kom-pre-SOR', pron_en:'kom-PRE-sor', pron_fr:'kom-pre-SÉR'},
+        {emoji:'💨', es:'pistola de aire', en:'air gun', fr:'pistolet à air', pron_es:'pis-TO-la de AI-re', pron_en:'er gan', pron_fr:'pis-to-LÉ a er'},
+        {emoji:'🧴', es:'lubricante', en:'lubricant', fr:'lubrifiant', pron_es:'lu-bri-KAN-te', pron_en:'LU-bri-kant', pron_fr:'lü-bri-FIÁN'},
+        {emoji:'🪫', es:'cargador', en:'charger', fr:'chargeur', pron_es:'kar-ga-DOR', pron_en:'CHAR-yer', pron_fr:'shar-ZÉR'},
+        {emoji:'🔋', es:'batería recargable', en:'rechargeable battery', fr:'batterie rechargeable', pron_es:'ba-te-RÍ-a re-kar-GA-ble', pron_en:'ri-CHAR-ya-bol BA-te-ri', pron_fr:'ba-te-RÍ re-shar-ZABL'},
+        {emoji:'📦', es:'embalaje', en:'packaging', fr:'emballage', pron_es:'em-ba-LA-je', pron_en:'PA-ka-ying', pron_fr:'am-ba-LASH'},
+        {emoji:'🚚', es:'montacargas', en:'forklift', fr:'chariot élévateur', pron_es:'mon-ta-KAR-gas', pron_en:'FORK-lift', pron_fr:'sha-rio e-le-va-TÉR'},
+        {emoji:'🧱', es:'yeso', en:'plaster', fr:'plâtre', pron_es:'YE-so', pron_en:'PLAS-ter', pron_fr:'platr'},
+        {emoji:'🪜', es:'plataforma', en:'platform', fr:'plateforme', pron_es:'pla-ta-FOR-ma', pron_en:'PLAT-form', pron_fr:'plat-FORM'}
+    ],
+    home: [
+        {emoji:'🧯', es:'detector de humo', en:'smoke detector', fr:'détecteur de fumée', pron_es:'de-tek-TOR de U-mo', pron_en:'smouk di-TEK-tor', pron_fr:'de-tek-TÉR de fü-MÉ'},
+        {emoji:'🛎️', es:'portero', en:'intercom', fr:'interphone', pron_es:'por-TE-ro', pron_en:'IN-ter-kom', pron_fr:'an-ter-FON'},
+        {emoji:'🧺', es:'lavandería', en:'laundry room', fr:'buanderie', pron_es:'la-ban-de-RÍ-a', pron_en:'LON-dri rum', pron_fr:'bü-an-dri'},
+        {emoji:'🧼', es:'detergente', en:'detergent', fr:'détergent', pron_es:'de-ter-JÉN-te', pron_en:'di-TER-yent', pron_fr:'de-ter-JÁN'},
+        {emoji:'🧽', es:'estropajo', en:'scourer', fr:'éponge abrasive', pron_es:'es-tro-PA-jo', pron_en:'SKAU-rer', pron_fr:'e-pon a-bra-ZIV'},
+        {emoji:'🪣', es:'fregona', en:'mop', fr:'serpillière', pron_es:'fre-GO-na', pron_en:'mop', pron_fr:'ser-pi-YÉR'},
+        {emoji:'🧴', es:'suavizante', en:'softener', fr:'assouplissant', pron_es:'sua-bi-SAN-te', pron_en:'SOF-te-ner', pron_fr:'a-su-pli-SÁN'},
+        {emoji:'🧺', es:'tendedero', en:'drying rack', fr:'étendoir', pron_es:'ten-de-DE-ro', pron_en:'DRAI-ing rak', pron_fr:'e-tan-DUÁR'},
+        {emoji:'🧯', es:'botiquín', en:'first-aid kit', fr:'trousse de secours', pron_es:'bo-ti-KÍN', pron_en:'FERST eid kit', pron_fr:'trus de se-KUR'},
+        {emoji:'🌡️', es:'calefacción', en:'heating', fr:'chauffage', pron_es:'ka-le-fak-SIÓN', pron_en:'HII-ting', pron_fr:'sho-FAZH'},
+        {emoji:'❄️', es:'aire acondicionado', en:'air conditioner', fr:'climatisation', pron_es:'AI-re a-kon-di-sio-NA-do', pron_en:'er kon-DI-sho-ner', pron_fr:'kli-ma-ti-sa-SIÓN'},
+        {emoji:'🪭', es:'ventilador', en:'fan', fr:'ventilateur', pron_es:'ben-ti-la-DOR', pron_en:'fan', pron_fr:'van-ti-la-TÉR'},
+        {emoji:'🛏️', es:'colchón', en:'mattress', fr:'matelas', pron_es:'kol-CHÓN', pron_en:'MA-tres', pron_fr:'ma-te-LA'},
+        {emoji:'🧷', es:'percha', en:'hanger', fr:'cintre', pron_es:'PER-cha', pron_en:'JAN-ger', pron_fr:'santr'},
+        {emoji:'🚰', es:'fregadero', en:'sink', fr:'évier', pron_es:'fre-ga-DE-ro', pron_en:'sink', pron_fr:'e-VIÉ'},
+        {emoji:'🍽️', es:'encimera', en:'countertop', fr:'plan de travail', pron_es:'en-si-ME-ra', pron_en:'KAUN-ter-top', pron_fr:'plan de tra-VAY'},
+        {emoji:'🧊', es:'congelador', en:'freezer', fr:'congélateur', pron_es:'kon-he-la-DOR', pron_en:'FRII-zer', pron_fr:'kon-je-la-TÉR'},
+        {emoji:'🗄️', es:'alacena', en:'pantry', fr:'garde-manger', pron_es:'a-la-SE-na', pron_en:'PAN-tri', pron_fr:'gard man-JÉ'},
+        {emoji:'🪥', es:'enjuague bucal', en:'mouthwash', fr:'bain de bouche', pron_es:'en-JUA-ge bu-KAL', pron_en:'MAUZ-uosh', pron_fr:'ban de bush'},
+        {emoji:'🧴', es:'champú', en:'shampoo', fr:'shampooing', pron_es:'sham-PÚ', pron_en:'sham-PÚ', pron_fr:'sham-PUÁN'},
+        {emoji:'🧴', es:'acondicionador', en:'conditioner', fr:'après-shampoing', pron_es:'a-kon-di-sio-na-DOR', pron_en:'kon-DI-sho-ner', pron_fr:'a-pre sham-PUÁN'},
+        {emoji:'🧽', es:'toalla', en:'towel', fr:'serviette', pron_es:'to-A-ya', pron_en:'TAU-el', pron_fr:'ser-VIÉT'},
+        {emoji:'🪮', es:'peine', en:'comb', fr:'peigne', pron_es:'PEI-ne', pron_en:'koum', pron_fr:'peñ'},
+        {emoji:'🧼', es:'jabonera', en:'soap dish', fr:'porte-savon', pron_es:'ja-bo-NE-ra', pron_en:'soup dish', pron_fr:'port sa-VÓN'},
+        {emoji:'🪟', es:'persiana', en:'blind', fr:'store', pron_es:'per-SIA-na', pron_en:'blaind', pron_fr:'stor'},
+        {emoji:'🪞', es:'tocador', en:'dresser', fr:'coiffeuse', pron_es:'to-ka-DOR', pron_en:'DRE-ser', pron_fr:'kua-FEZ'},
+        {emoji:'🛋️', es:'reposapiés', en:'footrest', fr:'repose-pieds', pron_es:'re-po-sa-PIÉS', pron_en:'FUT-rest', pron_fr:'re-poz-pié'},
+        {emoji:'🧸', es:'juguetero', en:'toy box', fr:'coffre à jouets', pron_es:'ju-ge-TE-ro', pron_en:'toi boks', pron_fr:'kofr a jü-É'},
+        {emoji:'🎲', es:'juego de mesa', en:'board game', fr:'jeu de société', pron_es:'JUE-go de ME-sa', pron_en:'bord geim', pron_fr:'jé de so-sie-TÉ'},
+        {emoji:'📕', es:'novela', en:'novel', fr:'roman', pron_es:'no-BE-la', pron_en:'NO-vel', pron_fr:'ro-MÁN'}
+    ]
+};
+
+Object.entries(categoryDataExpansion).forEach(([categoryKey, items]) => {
+    if (categoryData[categoryKey]?.items && Array.isArray(items)) {
+        const existing = new Set(categoryData[categoryKey].items.map(item => item.es.toLowerCase()));
+        items.forEach((item) => {
+            if (!existing.has(item.es.toLowerCase())) {
+                categoryData[categoryKey].items.push(item);
+                existing.add(item.es.toLowerCase());
+            }
+        });
+    }
+});
+
+// ========== EXPANSION PACK 2 (más vocabulario avanzado) ==========
+const categoryDataPack2 = {
+    kitchen: [
+        {emoji:'🍲', es:'caldo', en:'broth', fr:'bouillon', pron_es:'KAL-do', pron_en:'broth', pron_fr:'bu-YÓN'},
+        {emoji:'🫛', es:'guisante', en:'pea', fr:'petit pois', pron_es:'gui-SAN-te', pron_en:'pii', pron_fr:'pe-TÍ pua'},
+        {emoji:'🌰', es:'castaña', en:'chestnut', fr:'châtaigne', pron_es:'kas-TA-ña', pron_en:'CHES-nat', pron_fr:'sha-TEÑ'},
+        {emoji:'🧄', es:'ajo', en:'garlic', fr:'ail', pron_es:'A-jo', pron_en:'GAR-lik', pron_fr:'ay'},
+        {emoji:'🧅', es:'chalota', en:'shallot', fr:'échalote', pron_es:'sha-LO-ta', pron_en:'sha-LOT', pron_fr:'e-sha-LOT'},
+        {emoji:'🥬', es:'espinaca', en:'spinach', fr:'épinard', pron_es:'es-pi-NA-ka', pron_en:'SPI-nich', pron_fr:'e-pi-NAR'},
+        {emoji:'🫘', es:'frijol', en:'bean', fr:'haricot', pron_es:'fri-JOL', pron_en:'biin', pron_fr:'a-ri-KÓ'},
+        {emoji:'🧀', es:'parmesano', en:'parmesan', fr:'parmesan', pron_es:'par-me-SA-no', pron_en:'par-me-ZAN', pron_fr:'par-me-ZAN'},
+        {emoji:'🍗', es:'asado', en:'roast', fr:'rôti', pron_es:'a-SA-do', pron_en:'roust', pron_fr:'ro-TÍ'},
+        {emoji:'🍮', es:'flan', en:'custard', fr:'flan', pron_es:'flan', pron_en:'KAS-terd', pron_fr:'flan'},
+        {emoji:'🥖', es:'masa', en:'dough', fr:'pâte', pron_es:'MA-sa', pron_en:'dou', pron_fr:'pat'},
+        {emoji:'🍚', es:'quinoa', en:'quinoa', fr:'quinoa', pron_es:'ki-NO-a', pron_en:'KI-nua', pron_fr:'ki-NO-a'}
+    ],
+    office: [
+        {emoji:'🖨️', es:'fotocopiadora', en:'copier', fr:'photocopieuse', pron_es:'fo-to-ko-pia-DO-ra', pron_en:'KO-pi-er', pron_fr:'fo-to-ko-pi-EUZ'},
+        {emoji:'💳', es:'tarjeta de acceso', en:'access card', fr:'carte d\'accès', pron_es:'tar-HE-ta de ak-SE-so', pron_en:'AK-ses kard', pron_fr:'kart dak-SE'},
+        {emoji:'🛜', es:'red', en:'network', fr:'réseau', pron_es:'red', pron_en:'NET-uork', pron_fr:'re-ZÓ'},
+        {emoji:'🧑‍💼', es:'cliente', en:'client', fr:'client', pron_es:'kli-EN-te', pron_en:'KLAI-ent', pron_fr:'kli-AN'},
+        {emoji:'📞', es:'llamada', en:'call', fr:'appel', pron_es:'ya-MA-da', pron_en:'kol', pron_fr:'a-PEL'},
+        {emoji:'📧', es:'adjunto', en:'attachment', fr:'pièce jointe', pron_es:'ad-JUN-to', pron_en:'a-TACH-ment', pron_fr:'piesh juant'},
+        {emoji:'📂', es:'directorio', en:'directory', fr:'répertoire', pron_es:'di-rek-TO-rio', pron_en:'di-REK-to-ri', pron_fr:'re-per-TUAR'},
+        {emoji:'🧾', es:'recibo', en:'receipt', fr:'reçu', pron_es:'re-SI-bo', pron_en:'ri-SIIT', pron_fr:'re-SÜ'},
+        {emoji:'🧑‍🤝‍🧑', es:'equipo', en:'team', fr:'équipe', pron_es:'e-KI-po', pron_en:'tiim', pron_fr:'e-KIP'},
+        {emoji:'📇', es:'contacto', en:'contact', fr:'contact', pron_es:'kon-TAK-to', pron_en:'KON-takt', pron_fr:'kon-TAKT'},
+        {emoji:'📃', es:'contrato', en:'contract', fr:'contrat', pron_es:'kon-TRA-to', pron_en:'KON-trakt', pron_fr:'kon-TRA'},
+        {emoji:'📣', es:'anuncio', en:'announcement', fr:'annonce', pron_es:'a-NUN-sio', pron_en:'a-NAUNS-ment', pron_fr:'a-NONS'}
+    ],
+    workshop: [
+        {emoji:'🧱', es:'mortero', en:'mortar', fr:'mortier', pron_es:'mor-TE-ro', pron_en:'MOR-ter', pron_fr:'mor-TIÉ'},
+        {emoji:'🪵', es:'tablilla', en:'slat', fr:'latte', pron_es:'ta-BLI-ya', pron_en:'slat', pron_fr:'lat'},
+        {emoji:'🛢️', es:'bidón', en:'drum', fr:'bidon', pron_es:'bi-DÓN', pron_en:'dram', pron_fr:'bi-DÓN'},
+        {emoji:'🧯', es:'arnés', en:'harness', fr:'harnais', pron_es:'ar-NÉS', pron_en:'JAR-nes', pron_fr:'ar-NÉ'},
+        {emoji:'🧰', es:'multímetro', en:'multimeter', fr:'multimètre', pron_es:'mul-TÍ-me-tro', pron_en:'MAL-ti-mi-ter', pron_fr:'mul-ti-METR'},
+        {emoji:'⚡', es:'fusible', en:'fuse', fr:'fusible', pron_es:'fu-SI-ble', pron_en:'fiuz', pron_fr:'fü-ZIBL'},
+        {emoji:'🔩', es:'rosca', en:'thread', fr:'filetage', pron_es:'ROS-ka', pron_en:'thred', pron_fr:'fi-le-TAZH'},
+        {emoji:'🧲', es:'nivelador', en:'leveler', fr:'niveleur', pron_es:'ni-be-la-DOR', pron_en:'LE-ve-ler', pron_fr:'ni-ve-LÉR'},
+        {emoji:'🧼', es:'desengrasante', en:'degreaser', fr:'dégraissant', pron_es:'de-sen-gra-SAN-te', pron_en:'di-GRII-ser', pron_fr:'de-gre-SÁN'},
+        {emoji:'🪚', es:'cepillo de carpintero', en:'wood plane', fr:'rabot', pron_es:'se-PI-yo de kar-pin-TE-ro', pron_en:'wud plein', pron_fr:'ra-BÓ'},
+        {emoji:'🪛', es:'punzón', en:'awl', fr:'poinçon', pron_es:'pun-SÓN', pron_en:'ol', pron_fr:'puan-SÓN'},
+        {emoji:'🔧', es:'manómetro', en:'gauge', fr:'manomètre', pron_es:'ma-NÓ-me-tro', pron_en:'gueich', pron_fr:'ma-no-METR'}
+    ],
+    home: [
+        {emoji:'🧾', es:'receta médica', en:'prescription', fr:'ordonnance', pron_es:'re-SE-ta ME-di-ka', pron_en:'pris-KRIP-shon', pron_fr:'or-do-NÁNS'},
+        {emoji:'🕯️', es:'incienso', en:'incense', fr:'encens', pron_es:'in-SIÉN-so', pron_en:'IN-sens', pron_fr:'an-SÁNS'},
+        {emoji:'🪑', es:'taburete', en:'stool', fr:'tabouret', pron_es:'ta-bu-RE-te', pron_en:'stuul', pron_fr:'ta-bu-RÉ'},
+        {emoji:'🧴', es:'loción', en:'lotion', fr:'lotion', pron_es:'lo-SIÓN', pron_en:'LOU-shon', pron_fr:'lo-SIÓN'},
+        {emoji:'🪴', es:'maceta', en:'flowerpot', fr:'pot de fleur', pron_es:'ma-SE-ta', pron_en:'FLAU-er-pot', pron_fr:'po de fler'},
+        {emoji:'🛌', es:'colcha', en:'bedspread', fr:'couvre-lit', pron_es:'KOL-cha', pron_en:'BED-spred', pron_fr:'kuvr-li'},
+        {emoji:'🧵', es:'costurero', en:'sewing kit', fr:'nécessaire de couture', pron_es:'kos-tu-RE-ro', pron_en:'SOU-ing kit', pron_fr:'ne-se-SER de ku-TÜR'},
+        {emoji:'🧷', es:'imperdible', en:'safety pin', fr:'épingle de sûreté', pron_es:'im-per-DI-ble', pron_en:'SEI-fi pin', pron_fr:'e-PAN-gl de sü-re-TÉ'},
+        {emoji:'🧻', es:'pañuelo', en:'tissue', fr:'mouchoir', pron_es:'pa-ÑUE-lo', pron_en:'TI-shu', pron_fr:'mu-SHUAR'},
+        {emoji:'🧼', es:'desinfectante', en:'disinfectant', fr:'désinfectant', pron_es:'de-sin-fek-TAN-te', pron_en:'di-sin-FEK-tant', pron_fr:'de-zan-fek-TÁN'},
+        {emoji:'🛍️', es:'despensa', en:'pantry stock', fr:'provisions', pron_es:'des-PEN-sa', pron_en:'PAN-tri stok', pron_fr:'pro-vi-ZIÓN'},
+        {emoji:'🧰', es:'caja de costura', en:'sewing box', fr:'boîte à couture', pron_es:'KA-ja de kos-TU-ra', pron_en:'SOU-ing boks', pron_fr:'buat a ku-TÜR'}
+    ]
+};
+
+Object.entries(categoryDataPack2).forEach(([categoryKey, items]) => {
+    if (categoryData[categoryKey]?.items && Array.isArray(items)) {
+        const existing = new Set(categoryData[categoryKey].items.map(item => item.es.toLowerCase()));
+        items.forEach((item) => {
+            if (!existing.has(item.es.toLowerCase())) {
+                categoryData[categoryKey].items.push(item);
+                existing.add(item.es.toLowerCase());
+            }
+        });
+    }
+});
+
 // ========== SINÓNIMOS PARA VALIDACIÓN FLEXIBLE ==========
 // Se generan automáticamente a partir de categoryData
 function buildSynonyms() {

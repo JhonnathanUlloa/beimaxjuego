@@ -9,7 +9,10 @@
 // ============================================
 
 const API_CONFIG = {
-    baseURL: '',
+    // Si se abre desde archivo local (file://), usar localhost:3000 por defecto
+    baseURL: (window.location.protocol === 'file:' || !window.location.host)
+        ? 'http://localhost:3000'
+        : '',
     endpoints: {
         aiHealth: '/api/ai/health',
         chat: '/api/ai/chat',

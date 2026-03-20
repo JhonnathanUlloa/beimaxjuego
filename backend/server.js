@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
-const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const WebSocket = require('ws');
@@ -35,7 +35,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 // ========== Base de Datos ==========
-const db = new sqlite3.Database('./beimax.db', (err) => {
+const dbPath = path.join(__dirname, 'beimax.db');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error al abrir la base de datos:', err);
     } else {
@@ -1117,10 +1118,325 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     const wss = new WebSocket.Server({ server: httpServer });
     const battleQueue = [];
     const activeBattles = new Map();
+    const quizQueue = [];
+    const activeQuizMatches = new Map();
+
+    const QUIZ_ROUND_MS = 15000;
+    const QUIZ_ROULETTE_MS = 2200;
+    const QUIZ_TOTAL_ROUNDS = 6;
+    const QUIZ_CATEGORY_KEYS = ['kitchen', 'office', 'workshop', 'home'];
+    const QUIZ_LANGS = ['es', 'en', 'fr'];
+
+    const ENGLISH_DUEL_BANK = {
+        kitchen: {
+            label: 'Cocina',
+            words: [
+                { es: 'cuchara', fr: 'cuillere', en: 'spoon' },
+                { es: 'tenedor', fr: 'fourchette', en: 'fork' },
+                { es: 'cuchillo', fr: 'couteau', en: 'knife' },
+                { es: 'plato', fr: 'assiette', en: 'plate' },
+                { es: 'taza', fr: 'tasse', en: 'cup' },
+                { es: 'vaso', fr: 'verre', en: 'glass' },
+                { es: 'horno', fr: 'four', en: 'oven' },
+                { es: 'nevera', fr: 'refrigerateur', en: 'fridge' },
+                { es: 'sarten', fr: 'poele', en: 'pan' },
+                { es: 'olla', fr: 'marmite', en: 'pot' },
+                { es: 'sal', fr: 'sel', en: 'salt' },
+                { es: 'azucar', fr: 'sucre', en: 'sugar' }
+            ]
+        },
+        office: {
+            label: 'Oficina',
+            words: [
+                { es: 'escritorio', fr: 'bureau', en: 'desk' },
+                { es: 'silla', fr: 'chaise', en: 'chair' },
+                { es: 'teclado', fr: 'clavier', en: 'keyboard' },
+                { es: 'raton', fr: 'souris', en: 'mouse' },
+                { es: 'monitor', fr: 'ecran', en: 'monitor' },
+                { es: 'lapiz', fr: 'crayon', en: 'pencil' },
+                { es: 'boligrafo', fr: 'stylo', en: 'pen' },
+                { es: 'cuaderno', fr: 'cahier', en: 'notebook' },
+                { es: 'impresora', fr: 'imprimante', en: 'printer' },
+                { es: 'telefono', fr: 'telephone', en: 'phone' },
+                { es: 'carpeta', fr: 'dossier', en: 'folder' },
+                { es: 'agenda', fr: 'agenda', en: 'planner' }
+            ]
+        },
+        workshop: {
+            label: 'Taller',
+            words: [
+                { es: 'martillo', fr: 'marteau', en: 'hammer' },
+                { es: 'destornillador', fr: 'tournevis', en: 'screwdriver' },
+                { es: 'llave', fr: 'cle', en: 'wrench' },
+                { es: 'tornillo', fr: 'vis', en: 'screw' },
+                { es: 'tuerca', fr: 'ecrou', en: 'nut' },
+                { es: 'clavo', fr: 'clou', en: 'nail' },
+                { es: 'sierra', fr: 'scie', en: 'saw' },
+                { es: 'taladro', fr: 'perceuse', en: 'drill' },
+                { es: 'alicates', fr: 'pince', en: 'pliers' },
+                { es: 'cinta', fr: 'ruban', en: 'tape' },
+                { es: 'guantes', fr: 'gants', en: 'gloves' },
+                { es: 'casco', fr: 'casque', en: 'helmet' }
+            ]
+        },
+        home: {
+            label: 'Hogar',
+            words: [
+                { es: 'cama', fr: 'lit', en: 'bed' },
+                { es: 'almohada', fr: 'oreiller', en: 'pillow' },
+                { es: 'manta', fr: 'couverture', en: 'blanket' },
+                { es: 'puerta', fr: 'porte', en: 'door' },
+                { es: 'ventana', fr: 'fenetre', en: 'window' },
+                { es: 'lampara', fr: 'lampe', en: 'lamp' },
+                { es: 'mesa', fr: 'table', en: 'table' },
+                { es: 'sofa', fr: 'canape', en: 'sofa' },
+                { es: 'alfombra', fr: 'tapis', en: 'carpet' },
+                { es: 'espejo', fr: 'miroir', en: 'mirror' },
+                { es: 'toalla', fr: 'serviette', en: 'towel' },
+                { es: 'ducha', fr: 'douche', en: 'shower' }
+            ]
+        }
+    };
+
+    function safeSend(client, payload) {
+        if (client && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(payload));
+        }
+    }
+
+    function normalizeQuizText(str) {
+        return String(str || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+    }
+
+    function randomFrom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function normalizeQuizLang(lang, fallback = 'es') {
+        const normalized = String(lang || '').toLowerCase().trim();
+        return QUIZ_LANGS.includes(normalized) ? normalized : fallback;
+    }
+
+    function normalizeQuizCategoryKey(categoryKey) {
+        const normalized = String(categoryKey || '').toLowerCase().trim();
+        return QUIZ_CATEGORY_KEYS.includes(normalized) ? normalized : null;
+    }
+
+    function makeQuizQuestion(nativeLanguage, learningLanguage, categoryKey = null, rouletteLabel = null) {
+        const safeNative = normalizeQuizLang(nativeLanguage, 'es');
+        const safeLearning = normalizeQuizLang(learningLanguage, 'en');
+        const normalizedCategory = normalizeQuizCategoryKey(categoryKey);
+        const selectedCategory = normalizedCategory || randomFrom(QUIZ_CATEGORY_KEYS);
+        const categoryData = ENGLISH_DUEL_BANK[selectedCategory];
+        if (!categoryData || !Array.isArray(categoryData.words) || categoryData.words.length === 0) return null;
+
+        const candidates = categoryData.words.filter(entry => entry[safeNative] && entry[safeLearning]);
+        const entry = randomFrom(candidates.length > 0 ? candidates : categoryData.words);
+
+        const promptLang = safeNative;
+        const answerLang = safeLearning;
+        const expectedRaw = entry[answerLang] || '';
+
+        const effectiveRouletteLabel = rouletteLabel || categoryData.label;
+        return {
+            categoryKey: selectedCategory,
+            categoryLabel: categoryData.label,
+            rouletteLabel: effectiveRouletteLabel,
+            promptLang,
+            prompt: entry[promptLang],
+            answerLang,
+            expected: normalizeQuizText(expectedRaw),
+            expectedRaw
+        };
+    }
+
+    function prepareNextQuizQuestion(match) {
+        let question = null;
+
+        if (match.categoryMode === 'roulette') {
+            const wheelOptions = [...QUIZ_CATEGORY_KEYS, 'free'];
+            const landed = randomFrom(wheelOptions);
+            if (landed === 'free') {
+                const chosen = randomFrom(QUIZ_CATEGORY_KEYS);
+                question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, chosen, 'Libre');
+            } else {
+                question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, landed);
+            }
+        } else {
+            question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, match.fixedCategory);
+        }
+
+        match.nextQuestion = question;
+    }
+
+    function startQuizRoulette(match) {
+        prepareNextQuizQuestion(match);
+        if (!match.nextQuestion) return;
+
+        const categories = [...QUIZ_CATEGORY_KEYS.map(k => ENGLISH_DUEL_BANK[k].label), 'Libre'];
+        match.players.forEach(p => safeSend(p.ws, {
+            type: 'quiz_roulette',
+            round: match.round + 1,
+            totalRounds: match.totalRounds,
+            selectedCategory: match.nextQuestion.rouletteLabel,
+            categories,
+            durationMs: QUIZ_ROULETTE_MS
+        }));
+
+        clearTimeout(match.intermissionTimer);
+        match.intermissionTimer = setTimeout(() => {
+            startQuizRound(match);
+        }, QUIZ_ROULETTE_MS);
+    }
+
+    function startQuizRound(match) {
+        if (!activeQuizMatches.has(match.id)) return;
+
+        match.round += 1;
+        match.currentQuestion = match.nextQuestion || makeQuizQuestion(match.nativeLanguage, match.learningLanguage, match.fixedCategory);
+        if (!match.currentQuestion) {
+            endQuizMatch(match.id);
+            return;
+        }
+        match.answers = [null, null];
+        match.roundStartedAt = Date.now();
+        match.roundEndsAt = match.roundStartedAt + QUIZ_ROUND_MS;
+
+        const payload = {
+            type: 'quiz_round_start',
+            matchId: match.id,
+            round: match.round,
+            totalRounds: match.totalRounds,
+            category: match.currentQuestion.categoryLabel,
+            prompt: match.currentQuestion.prompt,
+            promptLang: match.currentQuestion.promptLang,
+            answerLang: match.currentQuestion.answerLang,
+            durationMs: QUIZ_ROUND_MS,
+            deadline: match.roundEndsAt
+        };
+
+        match.players.forEach(p => safeSend(p.ws, payload));
+
+        clearTimeout(match.roundTimer);
+        match.roundTimer = setTimeout(() => resolveQuizRound(match.id), QUIZ_ROUND_MS + 100);
+    }
+
+    function resolveQuizRound(matchId) {
+        if (!activeQuizMatches.has(matchId)) return;
+        const match = activeQuizMatches.get(matchId);
+
+        clearTimeout(match.roundTimer);
+        const now = Date.now();
+
+        const roundResults = [0, 1].map((idx) => {
+            const ans = match.answers[idx] || { answer: '', answeredAt: now };
+            const normalized = normalizeQuizText(ans.answer);
+            const correct = normalized && normalized === match.currentQuestion.expected;
+            const msLeft = Math.max(0, match.roundEndsAt - (ans.answeredAt || now));
+            const speedRatio = QUIZ_ROUND_MS > 0 ? (msLeft / QUIZ_ROUND_MS) : 0;
+            const basePoints = correct ? 120 : 0;
+            const speedBonus = correct ? Math.round(80 * speedRatio) : 0;
+            const points = basePoints + speedBonus;
+
+            match.scores[idx] += points;
+            if (correct) match.correctAnswers[idx] += 1;
+            else match.wrongAnswers[idx] += 1;
+
+            return {
+                answer: ans.answer || '',
+                correct,
+                points,
+                speedBonus,
+                totalScore: match.scores[idx]
+            };
+        });
+
+        match.players.forEach((player, idx) => {
+            const opponentIdx = idx === 0 ? 1 : 0;
+            safeSend(player.ws, {
+                type: 'quiz_round_result',
+                matchId: match.id,
+                round: match.round,
+                totalRounds: match.totalRounds,
+                expectedAnswer: match.currentQuestion.expectedRaw,
+                you: roundResults[idx],
+                opponent: {
+                    answer: roundResults[opponentIdx].answer,
+                    correct: roundResults[opponentIdx].correct,
+                    points: roundResults[opponentIdx].points,
+                    totalScore: roundResults[opponentIdx].totalScore
+                },
+                scores: match.scores
+            });
+        });
+
+        if (match.round >= match.totalRounds) {
+            endQuizMatch(match.id);
+        } else {
+            startQuizRoulette(match);
+        }
+    }
+
+    function endQuizMatch(matchId, disconnectedIndex = null) {
+        if (!activeQuizMatches.has(matchId)) return;
+        const match = activeQuizMatches.get(matchId);
+
+        clearTimeout(match.roundTimer);
+        clearTimeout(match.intermissionTimer);
+
+        let winnerIndex = null;
+        if (disconnectedIndex !== null) {
+            winnerIndex = disconnectedIndex === 0 ? 1 : 0;
+        } else if (match.scores[0] > match.scores[1]) {
+            winnerIndex = 0;
+        } else if (match.scores[1] > match.scores[0]) {
+            winnerIndex = 1;
+        }
+
+        const diff = Math.abs(match.scores[0] - match.scores[1]);
+        const winnerBonus = Math.min(40, Math.floor(diff / 40) * 5);
+        const coinsAward = [0, 0];
+        const xpAward = [0, 0];
+
+        if (winnerIndex === null) {
+            coinsAward[0] = 40;
+            coinsAward[1] = 40;
+            xpAward[0] = 95;
+            xpAward[1] = 95;
+        } else {
+            const loserIndex = winnerIndex === 0 ? 1 : 0;
+            coinsAward[winnerIndex] = 65 + winnerBonus;
+            coinsAward[loserIndex] = 25;
+            xpAward[winnerIndex] = 130;
+            xpAward[loserIndex] = disconnectedIndex === null ? 80 : 50;
+        }
+
+        match.players.forEach((p, idx) => {
+            safeSend(p.ws, {
+                type: 'quiz_match_end',
+                matchId: match.id,
+                winnerIndex,
+                youAreWinner: winnerIndex === idx,
+                scores: match.scores,
+                correctAnswers: match.correctAnswers,
+                wrongAnswers: match.wrongAnswers,
+                coinsAward: coinsAward[idx],
+                xpAward: xpAward[idx]
+            });
+            if (p.ws) p.ws.quizId = null;
+        });
+
+        activeQuizMatches.delete(matchId);
+    }
 
     wss.on('connection', (ws) => {
         ws.isAlive = true;
         ws.battleId = null;
+        ws.quizId = null;
 
         ws.on('pong', () => { ws.isAlive = true; });
 
@@ -1140,6 +1456,11 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                 clearTimeout(battleQueue[qIdx].queueTimer);
                 battleQueue.splice(qIdx, 1);
             }
+            const quizIdx = quizQueue.findIndex(q => q.ws === ws);
+            if (quizIdx >= 0) {
+                clearTimeout(quizQueue[quizIdx].queueTimer);
+                quizQueue.splice(quizIdx, 1);
+            }
             // Handle disconnect from active battle
             if (ws.battleId && activeBattles.has(ws.battleId)) {
                 const battle = activeBattles.get(ws.battleId);
@@ -1148,6 +1469,17 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                     opponent.ws.send(JSON.stringify({ type: 'opponent_disconnected' }));
                 }
                 activeBattles.delete(ws.battleId);
+            }
+            if (ws.quizId && activeQuizMatches.has(ws.quizId)) {
+                const quizMatch = activeQuizMatches.get(ws.quizId);
+                const disconnectedIndex = quizMatch.players.findIndex(p => p.ws === ws);
+                const opponentIndex = disconnectedIndex === 0 ? 1 : 0;
+                const opponent = quizMatch.players[opponentIndex];
+                safeSend(opponent?.ws, {
+                    type: 'quiz_opponent_disconnected',
+                    message: 'Tu rival se desconecto. Ganas la partida.'
+                });
+                endQuizMatch(ws.quizId, disconnectedIndex);
             }
         });
     });
@@ -1277,6 +1609,164 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                     }
                     activeBattles.delete(ws.battleId);
                     ws.battleId = null;
+                }
+                break;
+            }
+            case 'join_quiz_queue': {
+                if (ws.quizId) return;
+
+                const inQueue = quizQueue.some(q => q.ws === ws);
+                if (inQueue) return;
+
+                const nativeLanguage = normalizeQuizLang(msg.nativeLanguage, 'es');
+                const learningLanguage = normalizeQuizLang(msg.learningLanguage, 'en');
+                if (nativeLanguage === learningLanguage) {
+                    safeSend(ws, {
+                        type: 'error',
+                        message: 'Selecciona idiomas diferentes para nativo y aprendizaje.'
+                    });
+                    return;
+                }
+
+                const requestedMode = String(msg.categoryMode || 'roulette').toLowerCase().trim();
+                const mode = requestedMode === 'roulette' ? 'roulette' : 'fixed';
+                const preferredCategory = normalizeQuizCategoryKey(msg.fixedCategory);
+                if (mode === 'fixed' && !preferredCategory) {
+                    safeSend(ws, {
+                        type: 'error',
+                        message: 'Selecciona una categoría válida para modo libre.'
+                    });
+                    return;
+                }
+
+                const matchKey = mode === 'roulette'
+                    ? `${nativeLanguage}|${learningLanguage}|roulette`
+                    : `${nativeLanguage}|${learningLanguage}|fixed:${preferredCategory}`;
+
+                const playerData = {
+                    ws,
+                    name: msg.name || 'Jugador',
+                    level: msg.level || 1,
+                    nativeLanguage,
+                    learningLanguage,
+                    categoryMode: mode,
+                    fixedCategory: preferredCategory,
+                    matchKey
+                };
+
+                quizQueue.push(playerData);
+                const positionInCompatibleQueue = quizQueue.filter(q => q.matchKey === matchKey).length;
+                safeSend(ws, { type: 'quiz_queue_joined', position: positionInCompatibleQueue });
+
+                playerData.queueTimer = setTimeout(() => {
+                    const idx = quizQueue.findIndex(q => q.ws === ws);
+                    if (idx >= 0) {
+                        quizQueue.splice(idx, 1);
+                        safeSend(ws, {
+                            type: 'quiz_queue_timeout',
+                            message: 'No se encontro rival para el duelo. Intenta de nuevo.'
+                        });
+                    }
+                }, 90000);
+
+                const myIdx = quizQueue.findIndex(q => q.ws === ws);
+                const oppIdx = quizQueue.findIndex((q, idx) => idx !== myIdx && q.matchKey === matchKey);
+
+                if (myIdx >= 0 && oppIdx >= 0) {
+                    const idxA = Math.max(myIdx, oppIdx);
+                    const idxB = Math.min(myIdx, oppIdx);
+                    const p1 = quizQueue[idxB];
+                    const p2 = quizQueue[idxA];
+                    quizQueue.splice(idxA, 1);
+                    quizQueue.splice(idxB, 1);
+                    clearTimeout(p1.queueTimer);
+                    clearTimeout(p2.queueTimer);
+
+                    const matchId = 'quiz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                    p1.ws.quizId = matchId;
+                    p2.ws.quizId = matchId;
+
+                    const match = {
+                        id: matchId,
+                        players: [p1, p2],
+                        round: 0,
+                        totalRounds: QUIZ_TOTAL_ROUNDS,
+                        scores: [0, 0],
+                        correctAnswers: [0, 0],
+                        wrongAnswers: [0, 0],
+                        answers: [null, null],
+                        currentQuestion: null,
+                        nextQuestion: null,
+                        nativeLanguage: p1.nativeLanguage,
+                        learningLanguage: p1.learningLanguage,
+                        categoryMode: p1.categoryMode,
+                        fixedCategory: p1.fixedCategory,
+                        roundStartedAt: 0,
+                        roundEndsAt: 0,
+                        roundTimer: null,
+                        intermissionTimer: null
+                    };
+
+                    activeQuizMatches.set(matchId, match);
+
+                    safeSend(p1.ws, {
+                        type: 'quiz_match_found',
+                        matchId,
+                        playerIndex: 0,
+                        totalRounds: QUIZ_TOTAL_ROUNDS,
+                        nativeLanguage: p1.nativeLanguage,
+                        learningLanguage: p1.learningLanguage,
+                        categoryMode: p1.categoryMode,
+                        fixedCategory: p1.fixedCategory,
+                        opponent: { name: p2.name, level: p2.level }
+                    });
+
+                    safeSend(p2.ws, {
+                        type: 'quiz_match_found',
+                        matchId,
+                        playerIndex: 1,
+                        totalRounds: QUIZ_TOTAL_ROUNDS,
+                        nativeLanguage: p1.nativeLanguage,
+                        learningLanguage: p1.learningLanguage,
+                        categoryMode: p1.categoryMode,
+                        fixedCategory: p1.fixedCategory,
+                        opponent: { name: p1.name, level: p1.level }
+                    });
+
+                    startQuizRoulette(match);
+                }
+                break;
+            }
+            case 'leave_quiz_queue': {
+                const idx = quizQueue.findIndex(q => q.ws === ws);
+                if (idx >= 0) {
+                    clearTimeout(quizQueue[idx].queueTimer);
+                    quizQueue.splice(idx, 1);
+                }
+                safeSend(ws, { type: 'quiz_queue_left' });
+                break;
+            }
+            case 'quiz_answer': {
+                if (!ws.quizId || !activeQuizMatches.has(ws.quizId)) return;
+                const match = activeQuizMatches.get(ws.quizId);
+                const pIdx = match.players.findIndex(p => p.ws === ws);
+                if (pIdx < 0) return;
+
+                if (msg.round !== match.round) return;
+                if (match.answers[pIdx]) return;
+
+                match.answers[pIdx] = {
+                    answer: String(msg.answer || '').slice(0, 60),
+                    answeredAt: Date.now()
+                };
+
+                safeSend(ws, { type: 'quiz_answer_received' });
+
+                const oppIdx = pIdx === 0 ? 1 : 0;
+                safeSend(match.players[oppIdx]?.ws, { type: 'quiz_opponent_answered' });
+
+                if (match.answers[0] && match.answers[1]) {
+                    setTimeout(() => resolveQuizRound(match.id), 350);
                 }
                 break;
             }

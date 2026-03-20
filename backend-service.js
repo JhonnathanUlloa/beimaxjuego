@@ -3,7 +3,10 @@
 // ============================================
 
 const BACKEND_CONFIG = {
-    baseURL: `${window.location.protocol}//${window.location.host}`,
+    // Si se abre desde archivo local (file://), usar localhost:3000 por defecto
+    baseURL: (window.location.protocol === 'file:' || !window.location.host) 
+        ? 'http://localhost:3000' 
+        : `${window.location.protocol}//${window.location.host}`,
     endpoints: {
         register: '/api/auth/register',
         login: '/api/auth/login',

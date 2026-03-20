@@ -10,6 +10,7 @@ const gameState = {
     selectedGender: null,
     selectedRobotType: 'classic',
     robotType: 'classic',
+    languageDifficulty: 'medium',
     nativeLanguage: null,
     learningLanguage: null,
     currentCategory: null,
@@ -74,6 +75,64 @@ const gameState = {
 
 const langNames = {
     es: 'Español', en: 'English', fr: 'Français'
+};
+
+const DIFFICULTY_LABELS = {
+    easy: 'Fácil',
+    medium: 'Media',
+    hard: 'Difícil'
+};
+
+const DIFFICULTY_REWARDS = {
+    easy: {
+        imageBaseCoins: 5,
+        timeBonusFast: 5,
+        timeBonusMid: 3,
+        timeBonusSlow: 2,
+        xpPerPoint: 20,
+        cameraCoins: 5,
+        cameraXp: 20
+    },
+    medium: {
+        imageBaseCoins: 8,
+        timeBonusFast: 7,
+        timeBonusMid: 5,
+        timeBonusSlow: 3,
+        xpPerPoint: 30,
+        cameraCoins: 8,
+        cameraXp: 30
+    },
+    hard: {
+        imageBaseCoins: 12,
+        timeBonusFast: 10,
+        timeBonusMid: 7,
+        timeBonusSlow: 5,
+        xpPerPoint: 45,
+        cameraCoins: 12,
+        cameraXp: 45
+    }
+};
+
+const onlineEnglishState = {
+    ws: null,
+    manualClose: false,
+    connected: false,
+    searching: false,
+    categoryMode: 'roulette',
+    fixedCategory: 'kitchen',
+    nativeLanguage: 'es',
+    learningLanguage: 'en',
+    matchId: null,
+    playerIndex: 0,
+    opponentName: 'Rival',
+    totalRounds: 0,
+    currentRound: 0,
+    scores: [0, 0],
+    rouletteRotation: 0,
+    deadline: 0,
+    timerInterval: null,
+    rouletteInterval: null,
+    submittedRound: null
 };
 
 function getOutfitInfo(value) {
@@ -338,7 +397,9 @@ const backNavigation = {
     'wardrobeScreen': 'dashboardScreen',
     'statsScreen': 'dashboardScreen',
     'battleScreen': 'dashboardScreen',
-    'onlineBattleScreen': 'dashboardScreen'
+    'onlineBattleScreen': 'dashboardScreen',
+    'onlineEnglishLobbyScreen': 'gameModeScreen',
+    'onlineEnglishMatchScreen': 'onlineEnglishLobbyScreen'
 };
 
 function goBack() {
@@ -447,6 +508,576 @@ function checkLanguageReady() {
 function selectCategory(cat) {
     gameState.currentCategory = cat;
     showScreen('gameModeScreen');
+}
+
+function setLanguageDifficulty(level) {
+    if (!DIFFICULTY_LABELS[level]) return;
+    gameState.languageDifficulty = level;
+    document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.difficulty-btn[data-difficulty="${level}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+    showNotif('🎯', `Dificultad: ${DIFFICULTY_LABELS[level]}`);
+}
+
+function getDifficultyRewardConfig() {
+    return DIFFICULTY_REWARDS[gameState.languageDifficulty] || DIFFICULTY_REWARDS.medium;
+}
+
+function inferWordDifficulty(item, lang) {
+    const raw = (item?.[lang] || '').trim();
+    const normalized = normalizeStr(raw);
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    const charCount = normalized.replace(/[^a-z]/g, '').length;
+    const hasHyphenOrApostrophe = /[-'’]/.test(raw);
+
+    if (wordCount >= 3 || charCount >= 12 || (wordCount >= 2 && hasHyphenOrApostrophe)) return 'hard';
+    if (wordCount === 2 || charCount >= 8 || hasHyphenOrApostrophe) return 'medium';
+    return 'easy';
+}
+
+function getCategoryItemsByDifficulty(categoryKey) {
+    const allItems = categoryData[categoryKey]?.items || [];
+    const lang = gameState.learningLanguage || 'en';
+    const selected = gameState.languageDifficulty || 'medium';
+    let filtered = allItems.filter(item => inferWordDifficulty(item, lang) === selected);
+
+    if (filtered.length < 12 && selected === 'easy') {
+        filtered = allItems.filter(item => {
+            const d = inferWordDifficulty(item, lang);
+            return d === 'easy' || d === 'medium';
+        });
+    }
+    if (filtered.length < 12 && selected === 'hard') {
+        filtered = allItems.filter(item => {
+            const d = inferWordDifficulty(item, lang);
+            return d === 'hard' || d === 'medium';
+        });
+    }
+    if (filtered.length < 12) filtered = allItems;
+
+    return filtered;
+}
+
+// ========== ONLINE ENGLISH DUEL ==========
+
+const QUIZ_ROULETTE_LABELS = ['Cocina', 'Oficina', 'Taller', 'Hogar', 'Libre'];
+const QUIZ_CATEGORY_LABELS = {
+    kitchen: 'Cocina',
+    office: 'Oficina',
+    workshop: 'Taller',
+    home: 'Hogar'
+};
+
+function getWsUrl() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${location.host}`;
+}
+
+function onOnlineQuizCategoryModeChange() {
+    const modeEl = document.getElementById('onlineQuizCategoryMode');
+    const fixedEl = document.getElementById('onlineQuizFixedCategory');
+    if (!modeEl || !fixedEl) return;
+    fixedEl.style.display = modeEl.value === 'fixed' ? '' : 'none';
+}
+
+function getOnlineQuizCategorySelection() {
+    const modeEl = document.getElementById('onlineQuizCategoryMode');
+    const fixedEl = document.getElementById('onlineQuizFixedCategory');
+    const mode = modeEl?.value === 'fixed' ? 'fixed' : 'roulette';
+    const fixedCategory = fixedEl?.value || 'kitchen';
+    return { mode, fixedCategory };
+}
+
+function setupQuizRouletteWheel() {
+    const wheel = document.getElementById('quizRouletteWheel');
+    if (!wheel) return;
+
+    wheel.querySelectorAll('.quiz-roulette-label').forEach(el => el.remove());
+    const slices = QUIZ_ROULETTE_LABELS.length;
+    const step = 360 / slices;
+    const radius = 33;
+
+    QUIZ_ROULETTE_LABELS.forEach((label, idx) => {
+        const mid = idx * step + step / 2;
+        const text = document.createElement('div');
+        text.className = 'quiz-roulette-label';
+        text.textContent = label;
+        text.style.transform = `rotate(${mid}deg) translate(${radius}%) rotate(${mid > 90 && mid < 270 ? 180 : 0}deg)`;
+        wheel.appendChild(text);
+    });
+}
+
+function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
+    const wheel = document.getElementById('quizRouletteWheel');
+    const resultEl = document.getElementById('quizRouletteResult');
+    if (!wheel) return;
+
+    const labels = QUIZ_ROULETTE_LABELS;
+    const idx = Math.max(0, labels.findIndex(l => l.toLowerCase() === String(selectedLabel || '').toLowerCase()));
+    const slice = 360 / labels.length;
+    const centerDeg = idx * slice + slice / 2;
+    const pointerDeg = 180;
+    const extraTurns = 360 * (4 + Math.floor(Math.random() * 3));
+    const target = pointerDeg - centerDeg;
+
+    onlineEnglishState.rouletteRotation += extraTurns + target;
+
+    wheel.style.transitionDuration = `${Math.max(1200, durationMs)}ms`;
+    wheel.style.setProperty('--rotation', `${onlineEnglishState.rouletteRotation}deg`);
+    if (resultEl) resultEl.textContent = `Resultado: ${selectedLabel}`;
+}
+
+function setOnlineEnglishStatus(text) {
+    const status = document.getElementById('onlineEnglishStatus');
+    if (status) status.innerHTML = text;
+}
+
+function setOnlineEnglishMatchButton({ text, disabled, handler }) {
+    const btn = document.getElementById('onlineEnglishMatchBtn');
+    if (!btn) return;
+    btn.textContent = text;
+    btn.disabled = !!disabled;
+    btn.onclick = handler;
+}
+
+function clearOnlineEnglishIntervals() {
+    if (onlineEnglishState.timerInterval) {
+        clearInterval(onlineEnglishState.timerInterval);
+        onlineEnglishState.timerInterval = null;
+    }
+    if (onlineEnglishState.rouletteInterval) {
+        clearInterval(onlineEnglishState.rouletteInterval);
+        onlineEnglishState.rouletteInterval = null;
+    }
+}
+
+function resetOnlineEnglishMatchState() {
+    clearOnlineEnglishIntervals();
+    onlineEnglishState.matchId = null;
+    onlineEnglishState.currentRound = 0;
+    onlineEnglishState.totalRounds = 0;
+    onlineEnglishState.scores = [0, 0];
+    onlineEnglishState.deadline = 0;
+    onlineEnglishState.submittedRound = null;
+}
+
+function disconnectOnlineEnglishSocket() {
+    clearOnlineEnglishIntervals();
+    onlineEnglishState.connected = false;
+    onlineEnglishState.searching = false;
+    onlineEnglishState.manualClose = true;
+
+    if (onlineEnglishState.ws) {
+        try {
+            if (onlineEnglishState.ws.readyState === WebSocket.OPEN) {
+                onlineEnglishState.ws.send(JSON.stringify({ type: 'leave_quiz_queue' }));
+            }
+            onlineEnglishState.ws.close();
+        } catch (e) {
+            console.warn('No se pudo cerrar socket de duelo inglés:', e);
+        }
+    }
+
+    onlineEnglishState.ws = null;
+    resetOnlineEnglishMatchState();
+}
+
+function showOnlineEnglishLobby() {
+    if (!gameState.nativeLanguage || !gameState.learningLanguage) {
+        showNotif('⚠️', 'Primero selecciona idiomas para jugar');
+        showLanguageScreen();
+        return;
+    }
+
+    if (gameState.nativeLanguage === gameState.learningLanguage) {
+        showNotif('⚠️', 'Selecciona idiomas diferentes para nativo y aprendizaje');
+        showLanguageScreen();
+        return;
+    }
+
+    onlineEnglishState.nativeLanguage = gameState.nativeLanguage;
+    onlineEnglishState.learningLanguage = gameState.learningLanguage;
+
+    const selection = getOnlineQuizCategorySelection();
+    onlineEnglishState.categoryMode = selection.mode;
+    onlineEnglishState.fixedCategory = selection.fixedCategory;
+
+    showScreen('onlineEnglishLobbyScreen');
+    setupQuizRouletteWheel();
+    onOnlineQuizCategoryModeChange();
+    setOnlineEnglishStatus('🔌 Conectando al servidor...');
+    setOnlineEnglishMatchButton({ text: 'Conectando...', disabled: true, handler: null });
+    connectOnlineEnglishSocket();
+}
+
+function exitOnlineEnglishLobby() {
+    disconnectOnlineEnglishSocket();
+    showScreen('gameModeScreen');
+}
+
+function exitOnlineEnglishMatch() {
+    disconnectOnlineEnglishSocket();
+    showScreen('gameModeScreen');
+    showNotif('🛑', 'Saliste del duelo online');
+}
+
+function connectOnlineEnglishSocket() {
+    const wsUrl = getWsUrl();
+    onlineEnglishState.manualClose = false;
+
+    if (onlineEnglishState.ws) {
+        try { onlineEnglishState.ws.close(); } catch (e) {}
+    }
+
+    try {
+        const ws = new WebSocket(wsUrl);
+        onlineEnglishState.ws = ws;
+
+        ws.onopen = () => {
+            onlineEnglishState.connected = true;
+            setOnlineEnglishStatus('✅ Conectado. Listo para buscar rival.');
+            setOnlineEnglishMatchButton({
+                text: '🔍 Buscar Rival',
+                disabled: false,
+                handler: searchOnlineEnglishMatch
+            });
+        };
+
+        ws.onclose = () => {
+            onlineEnglishState.connected = false;
+            onlineEnglishState.ws = null;
+
+            if (onlineEnglishState.manualClose) {
+                onlineEnglishState.manualClose = false;
+                return;
+            }
+
+            const activeScreen = document.querySelector('.screen.active')?.id;
+            if (activeScreen === 'onlineEnglishMatchScreen') {
+                showNotif('❌', 'Conexión perdida en duelo online');
+                showScreen('onlineEnglishLobbyScreen');
+            }
+
+            setOnlineEnglishStatus('❌ Desconectado del servidor');
+            setOnlineEnglishMatchButton({ text: 'Reconectar', disabled: false, handler: connectOnlineEnglishSocket });
+            resetOnlineEnglishMatchState();
+        };
+
+        ws.onerror = () => {
+            setOnlineEnglishStatus('❌ Error de conexión. Verifica backend en ejecución.');
+            setOnlineEnglishMatchButton({ text: 'Reintentar', disabled: false, handler: connectOnlineEnglishSocket });
+        };
+
+        ws.onmessage = (event) => {
+            let data;
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                return;
+            }
+            handleOnlineEnglishMessage(data);
+        };
+    } catch (e) {
+        setOnlineEnglishStatus('❌ Tu navegador no pudo abrir WebSocket.');
+        setOnlineEnglishMatchButton({ text: 'Reintentar', disabled: false, handler: connectOnlineEnglishSocket });
+    }
+}
+
+function searchOnlineEnglishMatch() {
+    if (!onlineEnglishState.ws || onlineEnglishState.ws.readyState !== WebSocket.OPEN) {
+        setOnlineEnglishStatus('🔌 Reconectando antes de buscar rival...');
+        connectOnlineEnglishSocket();
+        return;
+    }
+
+    onlineEnglishState.searching = true;
+    const selection = getOnlineQuizCategorySelection();
+    onlineEnglishState.categoryMode = selection.mode;
+    onlineEnglishState.fixedCategory = selection.fixedCategory;
+
+    const nativeLabel = langNames[gameState.nativeLanguage] || gameState.nativeLanguage;
+    const learnLabel = langNames[gameState.learningLanguage] || gameState.learningLanguage;
+    setOnlineEnglishStatus('🔍 Buscando rival para duelo de inglés...');
+    setOnlineEnglishMatchButton({
+        text: 'Cancelar búsqueda',
+        disabled: false,
+        handler: cancelOnlineEnglishSearch
+    });
+
+    onlineEnglishState.ws.send(JSON.stringify({
+        type: 'join_quiz_queue',
+        name: gameState.charName || gameState.user || 'Jugador',
+        level: gameState.level || 1,
+        nativeLanguage: gameState.nativeLanguage,
+        learningLanguage: gameState.learningLanguage,
+        categoryMode: selection.mode,
+        fixedCategory: selection.fixedCategory
+    }));
+
+    setOnlineEnglishStatus(`🔍 Buscando rival (${nativeLabel} → ${learnLabel})...`);
+}
+
+function cancelOnlineEnglishSearch() {
+    if (!onlineEnglishState.ws || onlineEnglishState.ws.readyState !== WebSocket.OPEN) return;
+    onlineEnglishState.searching = false;
+    onlineEnglishState.ws.send(JSON.stringify({ type: 'leave_quiz_queue' }));
+    setOnlineEnglishStatus('⏹️ Búsqueda cancelada.');
+    setOnlineEnglishMatchButton({
+        text: '🔍 Buscar Rival',
+        disabled: false,
+        handler: searchOnlineEnglishMatch
+    });
+}
+
+function updateOnlineEnglishScoreboard() {
+    const myIdx = onlineEnglishState.playerIndex;
+    const oppIdx = myIdx === 0 ? 1 : 0;
+    const myScore = onlineEnglishState.scores[myIdx] || 0;
+    const oppScore = onlineEnglishState.scores[oppIdx] || 0;
+    const myScoreEl = document.getElementById('quizYouScore');
+    const oppScoreEl = document.getElementById('quizOppScore');
+    if (myScoreEl) myScoreEl.textContent = `${myScore} pts`;
+    if (oppScoreEl) oppScoreEl.textContent = `${oppScore} pts`;
+}
+
+function startOnlineEnglishRoulette(selectedCategory, durationMs) {
+    setupQuizRouletteWheel();
+    spinRouletteToLabel(selectedCategory || 'Libre', durationMs || 2200);
+}
+
+function startOnlineEnglishRound(data) {
+    onlineEnglishState.currentRound = data.round;
+    onlineEnglishState.totalRounds = data.totalRounds;
+    onlineEnglishState.deadline = data.deadline || (Date.now() + (data.durationMs || 15000));
+    onlineEnglishState.submittedRound = null;
+
+    const roundText = document.getElementById('quizRoundText');
+    const category = document.getElementById('quizCategoryLabel');
+    const promptLang = document.getElementById('quizPromptLang');
+    const promptWord = document.getElementById('quizPromptWord');
+    const feedback = document.getElementById('quizFeedback');
+    const input = document.getElementById('quizAnswerInput');
+    const submit = document.getElementById('quizSubmitBtn');
+
+    if (roundText) roundText.textContent = `Ronda ${data.round}/${data.totalRounds}`;
+    if (category) category.textContent = `🎯 ${data.category}`;
+    if (promptLang) {
+        const from = langNames[data.promptLang] || String(data.promptLang || '').toUpperCase();
+        const to = langNames[data.answerLang] || String(data.answerLang || '').toUpperCase();
+        promptLang.textContent = `${from} → ${to}`;
+    }
+    if (promptWord) promptWord.textContent = data.prompt || '...';
+    if (feedback) feedback.textContent = 'Escribe rápido y suma más puntos.';
+
+    if (input) {
+        input.value = '';
+        input.disabled = false;
+        const to = langNames[data.answerLang] || String(data.answerLang || '').toUpperCase();
+        input.placeholder = `Escribe en ${to}`;
+        input.focus();
+    }
+    if (submit) submit.disabled = false;
+
+    updateOnlineEnglishTimer();
+    if (onlineEnglishState.timerInterval) clearInterval(onlineEnglishState.timerInterval);
+    onlineEnglishState.timerInterval = setInterval(updateOnlineEnglishTimer, 200);
+}
+
+function updateOnlineEnglishTimer() {
+    const timerEl = document.getElementById('quizTimerText');
+    if (!timerEl) return;
+
+    const leftMs = Math.max(0, onlineEnglishState.deadline - Date.now());
+    const leftSec = Math.ceil(leftMs / 1000);
+    timerEl.textContent = `${leftSec}s`;
+
+    if (leftSec <= 4) {
+        timerEl.style.color = 'var(--neon-red)';
+    } else if (leftSec <= 8) {
+        timerEl.style.color = 'var(--neon-gold)';
+    } else {
+        timerEl.style.color = 'var(--neon-green)';
+    }
+
+    if (leftMs <= 0 && onlineEnglishState.timerInterval) {
+        clearInterval(onlineEnglishState.timerInterval);
+        onlineEnglishState.timerInterval = null;
+    }
+}
+
+function submitOnlineEnglishAnswer() {
+    if (!onlineEnglishState.ws || onlineEnglishState.ws.readyState !== WebSocket.OPEN) return;
+    if (!onlineEnglishState.matchId) return;
+    if (onlineEnglishState.submittedRound === onlineEnglishState.currentRound) return;
+
+    const input = document.getElementById('quizAnswerInput');
+    const submit = document.getElementById('quizSubmitBtn');
+    const feedback = document.getElementById('quizFeedback');
+    const value = (input?.value || '').trim();
+    if (!value) {
+        const learn = langNames[onlineEnglishState.learningLanguage] || 'idioma objetivo';
+        showNotif('⚠️', `Escribe tu respuesta en ${learn}`);
+        return;
+    }
+
+    onlineEnglishState.ws.send(JSON.stringify({
+        type: 'quiz_answer',
+        matchId: onlineEnglishState.matchId,
+        round: onlineEnglishState.currentRound,
+        answer: value
+    }));
+
+    onlineEnglishState.submittedRound = onlineEnglishState.currentRound;
+    if (input) input.disabled = true;
+    if (submit) submit.disabled = true;
+    if (feedback) feedback.textContent = '📤 Respuesta enviada. Esperando resultado...';
+}
+
+async function applyOnlineEnglishRewards(matchData) {
+    const earnedCoins = matchData.coinsAward || 0;
+    const earnedXp = matchData.xpAward || 0;
+    const myIdx = onlineEnglishState.playerIndex || 0;
+    const correct = Array.isArray(matchData.correctAnswers) ? (matchData.correctAnswers[myIdx] || 0) : 0;
+    const wrong = Array.isArray(matchData.wrongAnswers) ? (matchData.wrongAnswers[myIdx] || 0) : 0;
+
+    gameState.coins += earnedCoins;
+    addExperience(earnedXp);
+    gameState.totalGames += 1;
+    gameState.totalCorrect += correct;
+    gameState.totalWrong += wrong;
+    updateDashboard();
+
+    try {
+        await saveGameResult(gameState.token, {
+            coins: gameState.coins,
+            experience: gameState.experience,
+            level: gameState.level,
+            category: 'online_english_duel',
+            correct,
+            wrong
+        });
+    } catch (e) {
+        console.error('Error guardando recompensas de duelo inglés:', e);
+    }
+}
+
+function handleOnlineEnglishMessage(data) {
+    const feedback = document.getElementById('quizFeedback');
+
+    switch (data.type) {
+        case 'quiz_queue_joined': {
+            setOnlineEnglishStatus(`🔎 En cola... posición ${data.position || 1}`);
+            break;
+        }
+        case 'quiz_queue_left': {
+            onlineEnglishState.searching = false;
+            setOnlineEnglishStatus('✅ Conectado. Listo para buscar rival.');
+            setOnlineEnglishMatchButton({ text: '🔍 Buscar Rival', disabled: false, handler: searchOnlineEnglishMatch });
+            break;
+        }
+        case 'quiz_queue_timeout': {
+            onlineEnglishState.searching = false;
+            setOnlineEnglishStatus(`⌛ ${data.message || 'Tiempo de espera agotado'}`);
+            setOnlineEnglishMatchButton({ text: '🔍 Buscar Rival', disabled: false, handler: searchOnlineEnglishMatch });
+            break;
+        }
+        case 'quiz_match_found': {
+            onlineEnglishState.searching = false;
+            onlineEnglishState.matchId = data.matchId;
+            onlineEnglishState.playerIndex = data.playerIndex || 0;
+            onlineEnglishState.totalRounds = data.totalRounds || 6;
+            onlineEnglishState.currentRound = 0;
+            onlineEnglishState.scores = [0, 0];
+            onlineEnglishState.opponentName = data.opponent?.name || 'Rival';
+            onlineEnglishState.nativeLanguage = data.nativeLanguage || gameState.nativeLanguage;
+            onlineEnglishState.learningLanguage = data.learningLanguage || gameState.learningLanguage;
+            onlineEnglishState.categoryMode = data.categoryMode || 'roulette';
+            onlineEnglishState.fixedCategory = data.fixedCategory || 'kitchen';
+
+            const youName = document.getElementById('quizYouName');
+            const oppName = document.getElementById('quizOppName');
+            const round = document.getElementById('quizRoundText');
+            const timer = document.getElementById('quizTimerText');
+
+            if (youName) youName.textContent = gameState.charName || gameState.user || 'Jugador';
+            if (oppName) oppName.textContent = onlineEnglishState.opponentName;
+            if (round) round.textContent = `Ronda 0/${onlineEnglishState.totalRounds}`;
+            if (timer) timer.textContent = '15s';
+            if (feedback) feedback.textContent = 'Rival encontrado. Comienza la ruleta...';
+
+            const nativeLabel = langNames[onlineEnglishState.nativeLanguage] || onlineEnglishState.nativeLanguage;
+            const learningLabel = langNames[onlineEnglishState.learningLanguage] || onlineEnglishState.learningLanguage;
+            setOnlineEnglishStatus(`⚔️ Emparejado: ${nativeLabel} → ${learningLabel}`);
+
+            updateOnlineEnglishScoreboard();
+            showScreen('onlineEnglishMatchScreen');
+            break;
+        }
+        case 'quiz_roulette': {
+            startOnlineEnglishRoulette(data.selectedCategory || 'Libre', data.durationMs || 2200);
+            if (feedback) feedback.textContent = `🎰 Ruleta girando... ronda ${data.round}/${data.totalRounds}`;
+            break;
+        }
+        case 'quiz_round_start': {
+            startOnlineEnglishRound(data);
+            break;
+        }
+        case 'quiz_answer_received': {
+            if (feedback) feedback.textContent = '📤 Respuesta enviada. Esperando al rival...';
+            break;
+        }
+        case 'quiz_opponent_answered': {
+            if (feedback && onlineEnglishState.submittedRound !== onlineEnglishState.currentRound) {
+                feedback.textContent = '⏱️ El rival ya respondió. ¡Envía tu respuesta!';
+            }
+            break;
+        }
+        case 'quiz_round_result': {
+            clearOnlineEnglishIntervals();
+            if (Array.isArray(data.scores)) {
+                onlineEnglishState.scores = data.scores;
+            }
+            updateOnlineEnglishScoreboard();
+
+            const input = document.getElementById('quizAnswerInput');
+            const submit = document.getElementById('quizSubmitBtn');
+            if (input) input.disabled = true;
+            if (submit) submit.disabled = true;
+
+            if (feedback) {
+                const state = data.you?.correct ? '✅ Correcto' : '❌ Incorrecto';
+                const pts = data.you?.points || 0;
+                feedback.textContent = `${state} | +${pts} pts | Respuesta: ${data.expectedAnswer}`;
+            }
+            break;
+        }
+        case 'quiz_opponent_disconnected': {
+            if (feedback) feedback.textContent = '🏁 El rival se desconectó. Se cerrará la partida.';
+            break;
+        }
+        case 'quiz_match_end': {
+            clearOnlineEnglishIntervals();
+            applyOnlineEnglishRewards(data).finally(() => {
+                const myIdx = onlineEnglishState.playerIndex || 0;
+                const myScore = Array.isArray(data.scores) ? (data.scores[myIdx] || 0) : 0;
+                const oppScore = Array.isArray(data.scores) ? (data.scores[myIdx === 0 ? 1 : 0] || 0) : 0;
+                const resultText = data.winnerIndex === null
+                    ? '🤝 Empate'
+                    : data.youAreWinner ? '🏆 ¡Ganaste!' : '🥈 Buen intento';
+
+                showNotif('🎯', `${resultText} +${data.coinsAward || 0} 🪙 y +${data.xpAward || 0} XP`);
+                setOnlineEnglishStatus(`${resultText} | ${myScore} - ${oppScore}`);
+                setOnlineEnglishMatchButton({ text: '🔍 Buscar Rival', disabled: false, handler: searchOnlineEnglishMatch });
+                resetOnlineEnglishMatchState();
+                showScreen('onlineEnglishLobbyScreen');
+            });
+            break;
+        }
+        case 'error': {
+            setOnlineEnglishStatus(`❌ ${data.message || 'Error en duelo online'}`);
+            break;
+        }
+    }
 }
 
 // ========== TEXT-TO-SPEECH (VOZ ROBÓTICA) ==========
@@ -741,7 +1372,7 @@ function imageRobotSpeak(item, isCorrect) {
 
 function startImageMode() {
     const cat = gameState.currentCategory;
-    const items = categoryData[cat]?.items;
+    const items = getCategoryItemsByDifficulty(cat);
     if (!items) return showNotif('❌', 'Categoría no encontrada');
 
     gameState.imgWords = shuffleArray([...items]);
@@ -848,10 +1479,11 @@ function timerExpired() {
 }
 
 function getTimeBonus() {
+    const cfg = getDifficultyRewardConfig();
     const elapsed = (Date.now() - gameState.questionStartTime) / 1000;
-    if (elapsed < 5) return { coins: 5, label: '⚡ Rapidísimo +5 🪙' };
-    if (elapsed < 10) return { coins: 3, label: '🏃 Rápido +3 🪙' };
-    if (elapsed < 15) return { coins: 2, label: '👍 Bien +2 🪙' };
+    if (elapsed < 5) return { coins: cfg.timeBonusFast, label: `⚡ Rapidísimo +${cfg.timeBonusFast} 🪙` };
+    if (elapsed < 10) return { coins: cfg.timeBonusMid, label: `🏃 Rápido +${cfg.timeBonusMid} 🪙` };
+    if (elapsed < 15) return { coins: cfg.timeBonusSlow, label: `👍 Bien +${cfg.timeBonusSlow} 🪙` };
     return { coins: 0, label: '' };
 }
 
@@ -902,6 +1534,7 @@ function checkImageAnswer() {
     stopTimer();
 
     const s = gameState;
+    const rewardCfg = getDifficultyRewardConfig();
     const item = s.imgWords[s.imgIndex];
     const learning = s.learningLanguage;
 
@@ -921,7 +1554,8 @@ function checkImageAnswer() {
     let timeBonus = { coins: 0, label: '' };
 
     if (wordCorrect) {
-        points = 1; coinReward = 5;
+        points = 1;
+        coinReward = rewardCfg.imageBaseCoins;
         timeBonus = getTimeBonus();
         resultIcon = '🌟'; resultText = '¡Correcto!'; resultClass = 'result-correct';
         showFloatingPoints(coinReward + timeBonus.coins, true);
@@ -957,7 +1591,7 @@ function checkImageAnswer() {
         details += `<br>${timeBonus.label}`;
     }
     if (coinReward > 0) {
-        details += `<br>+${coinReward} 🪙 | +${points * 20} XP`;
+        details += `<br>+${coinReward} 🪙 | +${points * rewardCfg.xpPerPoint} XP`;
     }
     details += `<br><small>🔊 Presiona el botón para escuchar la pronunciación</small>`;
 
@@ -1003,9 +1637,10 @@ function endImageMode() {
     }
     const s = gameState;
     const total = s.imgWords.length;
+    const rewardCfg = getDifficultyRewardConfig();
 
     gameState.coins += s.imgCoins;
-    const xpEarned = s.imgScore * 20;
+    const xpEarned = s.imgScore * rewardCfg.xpPerPoint;
     addExperience(xpEarned);
     gameState.totalGames++;
     gameState.totalCorrect += s.imgScore;
@@ -1031,6 +1666,7 @@ function endImageMode() {
     document.getElementById('imgResultDetails').innerHTML = `
         <strong>Puntuación:</strong> ${s.imgScore} / ${total}<br>
         <strong>Porcentaje:</strong> ${pct}%<br>
+        <strong>Dificultad:</strong> ${DIFFICULTY_LABELS[gameState.languageDifficulty]}<br>
         <strong>Monedas ganadas:</strong> ${s.imgCoins} 🪙<br>
         <strong>XP ganado:</strong> ${xpEarned}
     `;
@@ -1058,7 +1694,7 @@ function exitImageMode() {
 
 function startStudyMode() {
     const cat = gameState.currentCategory;
-    const items = categoryData[cat]?.items;
+    const items = getCategoryItemsByDifficulty(cat);
     if (!items) return showNotif('❌', 'Categoría no encontrada');
 
     gameState.studyWords = shuffleArray([...items]);
@@ -1195,7 +1831,7 @@ function showCameraStatus(text, type) {
 }
 
 function requestNewObject() {
-    const items = categoryData[gameState.currentCategory]?.items;
+    const items = getCategoryItemsByDifficulty(gameState.currentCategory);
     if (!items) return;
     const item = items[Math.floor(Math.random() * items.length)];
     gameState.requestedObj = item;
@@ -1243,6 +1879,7 @@ async function captureMode1() {
     showCameraStatus('🔍 COCO-SSD analizando imagen...', 'analyzing');
 
     try {
+        const rewardCfg = getDifficultyRewardConfig();
         const expectedObj = gameState.requestedObj[gameState.nativeLanguage];
         // Pasar el CANVAS con el snapshot (más confiable que video en vivo)
         const result = await apiValidateObject(canvas, expectedObj, gameState.currentCategory, true);
@@ -1253,10 +1890,10 @@ async function captureMode1() {
             resultEl.style.display = 'block';
             resultEl.style.background = 'rgba(34,197,94,0.15)';
             resultEl.style.color = '#22c55e';
-            resultEl.innerHTML = `✅ ¡Correcto! <strong>${detected}</strong>${conf} (+5 🪙)`;
+            resultEl.innerHTML = `✅ ¡Correcto! <strong>${detected}</strong>${conf} (+${rewardCfg.cameraCoins} 🪙 | +${rewardCfg.cameraXp} XP)`;
             gameState.mode1Score++;
-            gameState.coins += 5;
-            addExperience(20);
+            gameState.coins += rewardCfg.cameraCoins;
+            addExperience(rewardCfg.cameraXp);
             showCameraStatus('✅ ¡Objeto detectado por COCO-SSD!', 'success');
 
             // Robot: celebrar y mostrar traducciones + pronunciación
@@ -2064,4 +2701,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('imgAnswerName')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') checkImageAnswer();
     });
+
+    document.getElementById('quizAnswerInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') submitOnlineEnglishAnswer();
+    });
+
+    onOnlineQuizCategoryModeChange();
 });

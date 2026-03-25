@@ -117,6 +117,10 @@ const onlineEnglishState = {
     ws: null,
     manualClose: false,
     connected: false,
+    reconnectTimer: null,
+    reconnectAttempts: 0,
+    reconnectUntil: 0,
+    keepAliveTimer: null,
     searching: false,
     categoryMode: 'roulette',
     fixedCategory: 'kitchen',
@@ -568,6 +572,24 @@ const QUIZ_CATEGORY_LABELS = {
     workshop: 'Taller',
     home: 'Hogar'
 };
+const ONLINE_ENGLISH_RECONNECT_WINDOW_MS = 60000;
+
+function normalizeDeg(value) {
+    const normalized = Number(value) % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
+}
+
+function getRouletteLabelAtPointer(rotationDeg) {
+    const labels = QUIZ_ROULETTE_LABELS;
+    if (!labels.length) return 'Libre';
+
+    const slice = 360 / labels.length;
+    const pointerDeg = 270;
+    const wheelRotation = normalizeDeg(rotationDeg);
+    const wheelDegUnderPointer = normalizeDeg(pointerDeg - wheelRotation);
+    const idx = Math.floor(wheelDegUnderPointer / slice) % labels.length;
+    return labels[idx];
+}
 
 function getWsUrl() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -694,22 +716,23 @@ function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
     const labels = QUIZ_ROULETTE_LABELS;
     const idx = Math.max(0, labels.findIndex(l => l.toLowerCase() === String(selectedLabel || '').toLowerCase()));
     const slice = 360 / labels.length;
-    // Conic gradient uses 0deg at top and grows clockwise.
     const centerDeg = idx * slice + slice / 2;
-    // Pointer is placed on the left side of the wheel.
     const pointerDeg = 270;
+    const currentNorm = normalizeDeg(onlineEnglishState.rouletteRotation);
+    const desiredNorm = normalizeDeg(pointerDeg - centerDeg);
+    const deltaToTarget = normalizeDeg(desiredNorm - currentNorm);
     const extraTurns = 360 * (4 + Math.floor(Math.random() * 3));
-    const target = pointerDeg - centerDeg;
-
-    onlineEnglishState.rouletteRotation += extraTurns + target;
+    onlineEnglishState.rouletteRotation += extraTurns + deltaToTarget;
 
     wheel.classList.add('is-spinning');
     wheel.style.transitionDuration = `${Math.max(1200, durationMs)}ms`;
     wheel.style.setProperty('--rotation', `${onlineEnglishState.rouletteRotation}deg`);
-    if (resultEl) resultEl.textContent = `Resultado: ${selectedLabel}`;
+    if (resultEl) resultEl.textContent = 'Girando ruleta...';
 
     setTimeout(() => {
         wheel.classList.remove('is-spinning');
+        const landedLabel = getRouletteLabelAtPointer(onlineEnglishState.rouletteRotation);
+        if (resultEl) resultEl.textContent = `Resultado: ${landedLabel}`;
     }, Math.max(1200, durationMs) + 100);
 }
 
@@ -737,8 +760,53 @@ function clearOnlineEnglishIntervals() {
     }
 }
 
+function stopOnlineEnglishKeepAlive() {
+    if (onlineEnglishState.keepAliveTimer) {
+        clearInterval(onlineEnglishState.keepAliveTimer);
+        onlineEnglishState.keepAliveTimer = null;
+    }
+}
+
+function clearOnlineEnglishReconnectTimer() {
+    if (onlineEnglishState.reconnectTimer) {
+        clearTimeout(onlineEnglishState.reconnectTimer);
+        onlineEnglishState.reconnectTimer = null;
+    }
+}
+
+function scheduleOnlineEnglishReconnect() {
+    if (onlineEnglishState.manualClose) return;
+
+    const now = Date.now();
+    if (!onlineEnglishState.reconnectUntil || now > onlineEnglishState.reconnectUntil) {
+        onlineEnglishState.reconnectUntil = now + ONLINE_ENGLISH_RECONNECT_WINDOW_MS;
+        onlineEnglishState.reconnectAttempts = 0;
+    }
+
+    const remainingMs = onlineEnglishState.reconnectUntil - now;
+    if (remainingMs <= 0) {
+        clearOnlineEnglishReconnectTimer();
+        setOnlineEnglishStatus('❌ Desconectado del servidor. Pulsa Reconectar para continuar.');
+        setOnlineEnglishMatchButton({ text: 'Reconectar', disabled: false, handler: connectOnlineEnglishSocket });
+        return;
+    }
+
+    onlineEnglishState.reconnectAttempts += 1;
+    const delay = Math.min(1000 * onlineEnglishState.reconnectAttempts, 5000);
+    const secsLeft = Math.ceil(remainingMs / 1000);
+
+    setOnlineEnglishStatus(`🔄 Reconectando... intento ${onlineEnglishState.reconnectAttempts} (queda ${secsLeft}s)`);
+    setOnlineEnglishMatchButton({ text: 'Reconectando...', disabled: true, handler: null });
+
+    clearOnlineEnglishReconnectTimer();
+    onlineEnglishState.reconnectTimer = setTimeout(() => {
+        connectOnlineEnglishSocket();
+    }, delay);
+}
+
 function resetOnlineEnglishMatchState() {
     clearOnlineEnglishIntervals();
+    clearOnlineEnglishReconnectTimer();
     onlineEnglishState.matchId = null;
     onlineEnglishState.currentRound = 0;
     onlineEnglishState.totalRounds = 0;
@@ -746,10 +814,14 @@ function resetOnlineEnglishMatchState() {
     onlineEnglishState.deadline = 0;
     onlineEnglishState.submittedRound = null;
     onlineEnglishState.matchFinished = false;
+    onlineEnglishState.reconnectAttempts = 0;
+    onlineEnglishState.reconnectUntil = 0;
 }
 
 function disconnectOnlineEnglishSocket() {
     clearOnlineEnglishIntervals();
+    clearOnlineEnglishReconnectTimer();
+    stopOnlineEnglishKeepAlive();
     onlineEnglishState.connected = false;
     onlineEnglishState.searching = false;
     onlineEnglishState.manualClose = true;
@@ -816,8 +888,13 @@ function connectOnlineEnglishSocket() {
     const wsUrl = getWsUrl();
     onlineEnglishState.manualClose = false;
 
+    if (onlineEnglishState.ws && (onlineEnglishState.ws.readyState === WebSocket.OPEN || onlineEnglishState.ws.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+
     if (onlineEnglishState.ws) {
         try { onlineEnglishState.ws.close(); } catch (e) {}
+        onlineEnglishState.ws = null;
     }
 
     try {
@@ -826,6 +903,17 @@ function connectOnlineEnglishSocket() {
 
         ws.onopen = () => {
             onlineEnglishState.connected = true;
+            onlineEnglishState.reconnectAttempts = 0;
+            onlineEnglishState.reconnectUntil = 0;
+            clearOnlineEnglishReconnectTimer();
+            stopOnlineEnglishKeepAlive();
+
+            onlineEnglishState.keepAliveTimer = setInterval(() => {
+                if (onlineEnglishState.ws && onlineEnglishState.ws.readyState === WebSocket.OPEN) {
+                    onlineEnglishState.ws.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 15000);
+
             setOnlineEnglishStatus('✅ Conectado. Listo para buscar rival.');
             setOnlineEnglishMatchButton({
                 text: '🔍 Buscar Rival',
@@ -836,7 +924,10 @@ function connectOnlineEnglishSocket() {
 
         ws.onclose = () => {
             onlineEnglishState.connected = false;
-            onlineEnglishState.ws = null;
+            stopOnlineEnglishKeepAlive();
+            if (onlineEnglishState.ws === ws) {
+                onlineEnglishState.ws = null;
+            }
 
             if (onlineEnglishState.manualClose) {
                 onlineEnglishState.manualClose = false;
@@ -844,14 +935,20 @@ function connectOnlineEnglishSocket() {
             }
 
             const activeScreen = document.querySelector('.screen.active')?.id;
-            if (activeScreen === 'onlineEnglishMatchScreen') {
-                showNotif('❌', 'Conexión perdida en duelo online');
-                showScreen('onlineEnglishLobbyScreen');
+            const shouldReconnect =
+                activeScreen === 'onlineEnglishLobbyScreen' ||
+                activeScreen === 'onlineEnglishMatchScreen' ||
+                onlineEnglishState.searching ||
+                !!onlineEnglishState.matchId ||
+                onlineEnglishState.matchFinished;
+
+            if (shouldReconnect) {
+                scheduleOnlineEnglishReconnect();
+                return;
             }
 
             setOnlineEnglishStatus('❌ Desconectado del servidor');
             setOnlineEnglishMatchButton({ text: 'Reconectar', disabled: false, handler: connectOnlineEnglishSocket });
-            resetOnlineEnglishMatchState();
         };
 
         ws.onerror = () => {

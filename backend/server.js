@@ -1217,6 +1217,12 @@ httpServer.listen(PORT, '0.0.0.0', () => {
         return arr[Math.floor(Math.random() * arr.length)];
     }
 
+    function buildQuizQuestionKey(entry, promptLang, answerLang) {
+        const prompt = normalizeQuizText(entry?.[promptLang] || '');
+        const answer = normalizeQuizText(entry?.[answerLang] || '');
+        return `${promptLang}|${answerLang}|${prompt}|${answer}`;
+    }
+
     function normalizeQuizLang(lang, fallback = 'es') {
         const normalized = String(lang || '').toLowerCase().trim();
         return QUIZ_LANGS.includes(normalized) ? normalized : fallback;
@@ -1227,7 +1233,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
         return QUIZ_CATEGORY_KEYS.includes(normalized) ? normalized : null;
     }
 
-    function makeQuizQuestion(nativeLanguage, learningLanguage, categoryKey = null, rouletteLabel = null) {
+    function makeQuizQuestion(nativeLanguage, learningLanguage, categoryKey = null, rouletteLabel = null, usedQuestionKeys = null) {
         const safeNative = normalizeQuizLang(nativeLanguage, 'es');
         const safeLearning = normalizeQuizLang(learningLanguage, 'en');
         const normalizedCategory = normalizeQuizCategoryKey(categoryKey);
@@ -1236,11 +1242,20 @@ httpServer.listen(PORT, '0.0.0.0', () => {
         if (!categoryData || !Array.isArray(categoryData.words) || categoryData.words.length === 0) return null;
 
         const candidates = categoryData.words.filter(entry => entry[safeNative] && entry[safeLearning]);
-        const entry = randomFrom(candidates.length > 0 ? candidates : categoryData.words);
+        const basePool = candidates.length > 0 ? candidates : categoryData.words;
+        const unusedPool = usedQuestionKeys
+            ? basePool.filter(entry => !usedQuestionKeys.has(buildQuizQuestionKey(entry, safeNative, safeLearning)))
+            : basePool;
+
+        if (unusedPool.length === 0) return null;
+
+        const entry = randomFrom(unusedPool);
 
         const promptLang = safeNative;
         const answerLang = safeLearning;
         const expectedRaw = entry[answerLang] || '';
+        const questionKey = buildQuizQuestionKey(entry, promptLang, answerLang);
+        if (usedQuestionKeys) usedQuestionKeys.add(questionKey);
 
         const effectiveRouletteLabel = rouletteLabel || categoryData.label;
         return {
@@ -1251,7 +1266,8 @@ httpServer.listen(PORT, '0.0.0.0', () => {
             prompt: entry[promptLang],
             answerLang,
             expected: normalizeQuizText(expectedRaw),
-            expectedRaw
+            expectedRaw,
+            questionKey
         };
     }
 
@@ -1260,15 +1276,35 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
         if (match.categoryMode === 'roulette') {
             const wheelOptions = [...QUIZ_CATEGORY_KEYS, 'free'];
-            const landed = randomFrom(wheelOptions);
-            if (landed === 'free') {
-                const chosen = randomFrom(QUIZ_CATEGORY_KEYS);
-                question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, chosen, 'Libre');
-            } else {
-                question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, landed);
+            for (let i = 0; i < 16 && !question; i++) {
+                const landed = randomFrom(wheelOptions);
+                if (landed === 'free') {
+                    const chosen = randomFrom(QUIZ_CATEGORY_KEYS);
+                    question = makeQuizQuestion(
+                        match.nativeLanguage,
+                        match.learningLanguage,
+                        chosen,
+                        'Libre',
+                        match.usedQuestionKeys
+                    );
+                } else {
+                    question = makeQuizQuestion(
+                        match.nativeLanguage,
+                        match.learningLanguage,
+                        landed,
+                        null,
+                        match.usedQuestionKeys
+                    );
+                }
             }
         } else {
-            question = makeQuizQuestion(match.nativeLanguage, match.learningLanguage, match.fixedCategory);
+            question = makeQuizQuestion(
+                match.nativeLanguage,
+                match.learningLanguage,
+                match.fixedCategory,
+                null,
+                match.usedQuestionKeys
+            );
         }
 
         match.nextQuestion = question;
@@ -1276,7 +1312,10 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
     function startQuizRoulette(match) {
         prepareNextQuizQuestion(match);
-        if (!match.nextQuestion) return;
+        if (!match.nextQuestion) {
+            endQuizMatch(match.id);
+            return;
+        }
 
         const categories = [...QUIZ_CATEGORY_KEYS.map(k => ENGLISH_DUEL_BANK[k].label), 'Libre'];
         match.players.forEach(p => safeSend(p.ws, {
@@ -1298,7 +1337,13 @@ httpServer.listen(PORT, '0.0.0.0', () => {
         if (!activeQuizMatches.has(match.id)) return;
 
         match.round += 1;
-        match.currentQuestion = match.nextQuestion || makeQuizQuestion(match.nativeLanguage, match.learningLanguage, match.fixedCategory);
+        match.currentQuestion = match.nextQuestion || makeQuizQuestion(
+            match.nativeLanguage,
+            match.learningLanguage,
+            match.fixedCategory,
+            null,
+            match.usedQuestionKeys
+        );
         if (!match.currentQuestion) {
             endQuizMatch(match.id);
             return;
@@ -1702,6 +1747,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                         learningLanguage: p1.learningLanguage,
                         categoryMode: p1.categoryMode,
                         fixedCategory: p1.fixedCategory,
+                        usedQuestionKeys: new Set(),
                         roundStartedAt: 0,
                         roundEndsAt: 0,
                         roundTimer: null,

@@ -1154,6 +1154,50 @@
                     </div>
                     <div class="quiz-feedback" id="quizFeedback">Esperando inicio de ronda...</div>
                 </div>
+
+                <div class="quiz-match-summary is-hidden" id="quizMatchSummary">
+                    <div class="quiz-match-summary-head">
+                        <h3 id="quizSummaryTitle">Resultado final</h3>
+                        <div id="quizSummaryLine">0 - 0</div>
+                    </div>
+
+                    <div class="quiz-summary-grid">
+                        <div class="quiz-summary-card">
+                            <small>Tus puntos</small>
+                            <strong id="quizSummaryMyPoints">0 pts</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Puntos rival</small>
+                            <strong id="quizSummaryOppPoints">0 pts</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Buenas</small>
+                            <strong id="quizSummaryMyGood">0</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Malas</small>
+                            <strong id="quizSummaryMyBad">0</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Rival buenas</small>
+                            <strong id="quizSummaryOppGood">0</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Rival malas</small>
+                            <strong id="quizSummaryOppBad">0</strong>
+                        </div>
+                        <div class="quiz-summary-card">
+                            <small>Precisión</small>
+                            <strong id="quizSummaryAccuracy">0%</strong>
+                        </div>
+                        <div class="quiz-summary-card summary-reward">
+                            <small>Recompensa</small>
+                            <strong id="quizSummaryRewards">+0 monedas | +0 XP</strong>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" onclick="replayOnlineEnglishMatch()">🔁 Volver a jugar</button>
+                </div>
             </div>
         </div>
     </div>

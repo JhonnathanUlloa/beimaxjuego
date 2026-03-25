@@ -132,7 +132,8 @@ const onlineEnglishState = {
     deadline: 0,
     timerInterval: null,
     rouletteInterval: null,
-    submittedRound: null
+    submittedRound: null,
+    matchFinished: false
 };
 
 function getOutfitInfo(value) {
@@ -614,6 +615,77 @@ function setQuizQuestionVisibility(visible) {
     area.classList.toggle('is-hidden', !visible);
 }
 
+function hideOnlineEnglishResultPanel() {
+    const panel = document.getElementById('quizMatchSummary');
+    if (!panel) return;
+    panel.classList.add('is-hidden');
+}
+
+function showOnlineEnglishResultPanel(data) {
+    const panel = document.getElementById('quizMatchSummary');
+    if (!panel) return;
+
+    const myIdx = onlineEnglishState.playerIndex || 0;
+    const oppIdx = myIdx === 0 ? 1 : 0;
+
+    const scores = Array.isArray(data.scores) ? data.scores : [0, 0];
+    const corrects = Array.isArray(data.correctAnswers) ? data.correctAnswers : [0, 0];
+    const wrongs = Array.isArray(data.wrongAnswers) ? data.wrongAnswers : [0, 0];
+
+    const myScore = scores[myIdx] || 0;
+    const oppScore = scores[oppIdx] || 0;
+    const myGood = corrects[myIdx] || 0;
+    const myBad = wrongs[myIdx] || 0;
+    const oppGood = corrects[oppIdx] || 0;
+    const oppBad = wrongs[oppIdx] || 0;
+    const myTotal = myGood + myBad;
+    const myAccuracy = myTotal > 0 ? Math.round((myGood / myTotal) * 100) : 0;
+
+    const resultText = data.winnerIndex === null
+        ? '🤝 Empate'
+        : data.youAreWinner ? '🏆 ¡Ganaste!' : '🥈 Buen intento';
+
+    const titleEl = document.getElementById('quizSummaryTitle');
+    const lineEl = document.getElementById('quizSummaryLine');
+    const myPointsEl = document.getElementById('quizSummaryMyPoints');
+    const oppPointsEl = document.getElementById('quizSummaryOppPoints');
+    const myGoodEl = document.getElementById('quizSummaryMyGood');
+    const myBadEl = document.getElementById('quizSummaryMyBad');
+    const oppGoodEl = document.getElementById('quizSummaryOppGood');
+    const oppBadEl = document.getElementById('quizSummaryOppBad');
+    const accEl = document.getElementById('quizSummaryAccuracy');
+    const rewardEl = document.getElementById('quizSummaryRewards');
+
+    if (titleEl) titleEl.textContent = resultText;
+    if (lineEl) lineEl.textContent = `${myScore} - ${oppScore}`;
+    if (myPointsEl) myPointsEl.textContent = `${myScore} pts`;
+    if (oppPointsEl) oppPointsEl.textContent = `${oppScore} pts`;
+    if (myGoodEl) myGoodEl.textContent = String(myGood);
+    if (myBadEl) myBadEl.textContent = String(myBad);
+    if (oppGoodEl) oppGoodEl.textContent = String(oppGood);
+    if (oppBadEl) oppBadEl.textContent = String(oppBad);
+    if (accEl) accEl.textContent = `${myAccuracy}%`;
+    if (rewardEl) rewardEl.textContent = `Recompensa: +${data.coinsAward || 0} monedas | +${data.xpAward || 0} XP`;
+
+    panel.classList.remove('is-hidden');
+}
+
+function replayOnlineEnglishMatch() {
+    hideOnlineEnglishResultPanel();
+    setQuizQuestionVisibility(false);
+    showScreen('onlineEnglishLobbyScreen');
+    resetOnlineEnglishMatchState();
+
+    if (!onlineEnglishState.ws || onlineEnglishState.ws.readyState !== WebSocket.OPEN) {
+        setOnlineEnglishStatus('🔌 Reconectando para buscar rival...');
+        connectOnlineEnglishSocket();
+        return;
+    }
+
+    setOnlineEnglishStatus('🔄 Buscando nueva partida...');
+    searchOnlineEnglishMatch();
+}
+
 function spinRouletteToLabel(selectedLabel, durationMs = 2200) {
     const wheel = document.getElementById('quizRouletteWheel');
     const resultEl = document.getElementById('quizRouletteResult');
@@ -673,6 +745,7 @@ function resetOnlineEnglishMatchState() {
     onlineEnglishState.scores = [0, 0];
     onlineEnglishState.deadline = 0;
     onlineEnglishState.submittedRound = null;
+    onlineEnglishState.matchFinished = false;
 }
 
 function disconnectOnlineEnglishSocket() {
@@ -717,6 +790,8 @@ function showOnlineEnglishLobby() {
     onlineEnglishState.fixedCategory = selection.fixedCategory;
 
     showScreen('onlineEnglishLobbyScreen');
+    hideOnlineEnglishResultPanel();
+    setQuizQuestionVisibility(false);
     setupQuizRouletteWheel();
     onOnlineQuizCategoryModeChange();
     setOnlineEnglishStatus('🔌 Conectando al servidor...');
@@ -726,11 +801,13 @@ function showOnlineEnglishLobby() {
 
 function exitOnlineEnglishLobby() {
     disconnectOnlineEnglishSocket();
+    hideOnlineEnglishResultPanel();
     showScreen('gameModeScreen');
 }
 
 function exitOnlineEnglishMatch() {
     disconnectOnlineEnglishSocket();
+    hideOnlineEnglishResultPanel();
     showScreen('gameModeScreen');
     showNotif('🛑', 'Saliste del duelo online');
 }
@@ -1028,6 +1105,9 @@ function handleOnlineEnglishMessage(data) {
             if (round) round.textContent = `Ronda 0/${onlineEnglishState.totalRounds}`;
             if (timer) timer.textContent = '15s';
             if (feedback) feedback.textContent = 'Rival encontrado. Comienza la ruleta...';
+            hideOnlineEnglishResultPanel();
+            setQuizQuestionVisibility(false);
+            onlineEnglishState.matchFinished = false;
 
             const nativeLabel = langNames[onlineEnglishState.nativeLanguage] || onlineEnglishState.nativeLanguage;
             const learningLabel = langNames[onlineEnglishState.learningLanguage] || onlineEnglishState.learningLanguage;
@@ -1092,8 +1172,9 @@ function handleOnlineEnglishMessage(data) {
                 showNotif('🎯', `${resultText} +${data.coinsAward || 0} 🪙 y +${data.xpAward || 0} XP`);
                 setOnlineEnglishStatus(`${resultText} | ${myScore} - ${oppScore}`);
                 setOnlineEnglishMatchButton({ text: '🔍 Buscar Rival', disabled: false, handler: searchOnlineEnglishMatch });
-                resetOnlineEnglishMatchState();
-                showScreen('onlineEnglishLobbyScreen');
+                setQuizQuestionVisibility(false);
+                showOnlineEnglishResultPanel(data);
+                onlineEnglishState.matchFinished = true;
             });
             break;
         }

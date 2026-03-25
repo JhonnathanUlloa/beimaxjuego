@@ -2,13 +2,21 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const WebSocket = require('ws');
+const crypto = require('crypto');
+
+let nodemailer = null;
+try {
+    nodemailer = require('nodemailer');
+} catch (e) {
+    console.log('ℹ️ nodemailer no instalado, recuperación por email deshabilitada');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,164 +43,197 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 // ========== Base de Datos ==========
-const dbPath = path.join(__dirname, 'beimax.db');
-const db = new sqlite3.Database(dbPath, (err) => {
+function resolveDatabasePath() {
+    const projectDbPath = path.resolve(__dirname, '..', 'beimax.db');
+    const backendDbPath = path.resolve(__dirname, 'beimax.db');
+    const projectExists = fs.existsSync(projectDbPath);
+    const backendExists = fs.existsSync(backendDbPath);
+
+    if (projectExists && backendExists) {
+        const projectMtime = fs.statSync(projectDbPath).mtimeMs;
+        const backendMtime = fs.statSync(backendDbPath).mtimeMs;
+        const chosen = backendMtime > projectMtime ? backendDbPath : projectDbPath;
+        if (chosen === backendDbPath) {
+            console.log('⚠️ Detectadas dos BDs. Usando la más reciente en backend/. Recomendado unificar luego.');
+        }
+        return chosen;
+    }
+
+    if (backendExists) return backendDbPath;
+    return projectDbPath;
+}
+
+const DB_PATH = resolveDatabasePath();
+
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error('Error al abrir la base de datos:', err);
     } else {
-        console.log('✅ Base de datos conectada');
+        console.log(`✅ Base de datos conectada: ${DB_PATH}`);
         initializeDatabase();
     }
 });
 
 function initializeDatabase() {
-    db.serialize(() => {
-        // Tabla de usuarios
-        db.run(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                character_name TEXT DEFAULT 'BeiBot',
-                age INTEGER DEFAULT 10,
-                gender TEXT DEFAULT 'other',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+    // Tabla de usuarios
+    db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            character_name TEXT DEFAULT 'BeiBot',
+            age INTEGER DEFAULT 10,
+            gender TEXT DEFAULT 'other',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
 
-        // Tabla de perfiles de usuario
-        db.run(`
-            CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id INTEGER PRIMARY KEY,
-                native_language TEXT DEFAULT 'es',
-                learning_language TEXT DEFAULT 'en',
-                coins INTEGER DEFAULT 0,
-                level INTEGER DEFAULT 1,
-                experience INTEGER DEFAULT 0,
-                current_streak INTEGER DEFAULT 0,
-                longest_streak INTEGER DEFAULT 0,
-                last_play_date DATE,
-                total_games_played INTEGER DEFAULT 0,
-                total_correct_answers INTEGER DEFAULT 0,
-                total_wrong_answers INTEGER DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+    // Tabla de perfiles de usuario
+    db.run(`
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY,
+            native_language TEXT DEFAULT 'es',
+            learning_language TEXT DEFAULT 'en',
+            coins INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            experience INTEGER DEFAULT 0,
+            current_streak INTEGER DEFAULT 0,
+            longest_streak INTEGER DEFAULT 0,
+            last_play_date DATE,
+            total_games_played INTEGER DEFAULT 0,
+            total_correct_answers INTEGER DEFAULT 0,
+            total_wrong_answers INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Tabla de personalización del robot
-        db.run(`
-            CREATE TABLE IF NOT EXISTS robot_customization (
-                user_id INTEGER PRIMARY KEY,
-                body_color TEXT DEFAULT '#E74856',
-                eye_color TEXT DEFAULT '#E74856',
-                hat TEXT DEFAULT NULL,
-                glasses TEXT DEFAULT NULL,
-                bowtie TEXT DEFAULT NULL,
-                earring TEXT DEFAULT NULL,
-                shoes TEXT DEFAULT NULL,
-                outfit TEXT DEFAULT 'none',
-                inventory TEXT DEFAULT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+    // Tabla de personalización del robot
+    db.run(`
+        CREATE TABLE IF NOT EXISTS robot_customization (
+            user_id INTEGER PRIMARY KEY,
+            body_color TEXT DEFAULT '#E74856',
+            eye_color TEXT DEFAULT '#E74856',
+            hat TEXT DEFAULT NULL,
+            glasses TEXT DEFAULT NULL,
+            bowtie TEXT DEFAULT NULL,
+            earring TEXT DEFAULT NULL,
+            shoes TEXT DEFAULT NULL,
+            outfit TEXT DEFAULT 'none',
+            inventory TEXT DEFAULT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Tabla de progreso por categoría
-        db.run(`
-            CREATE TABLE IF NOT EXISTS category_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                category TEXT NOT NULL,
-                level INTEGER DEFAULT 1,
-                games_played INTEGER DEFAULT 0,
-                correct_answers INTEGER DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+    // Tabla de progreso por categoría
+    db.run(`
+        CREATE TABLE IF NOT EXISTS category_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            category TEXT NOT NULL,
+            level INTEGER DEFAULT 1,
+            games_played INTEGER DEFAULT 0,
+            correct_answers INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Tabla de logros
-        db.run(`
-            CREATE TABLE IF NOT EXISTS achievements (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                achievement_type TEXT NOT NULL,
-                unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+    // Tabla de logros
+    db.run(`
+        CREATE TABLE IF NOT EXISTS achievements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            achievement_type TEXT NOT NULL,
+            unlocked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Tabla de historial de rachas
-        db.run(`
-            CREATE TABLE IF NOT EXISTS streak_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                date DATE NOT NULL,
-                games_played INTEGER DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+    // Tabla de historial de rachas
+    db.run(`
+        CREATE TABLE IF NOT EXISTS streak_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            date DATE NOT NULL,
+            games_played INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Migration: Add inventory column if it doesn't exist
-        db.run(`
-            ALTER TABLE robot_customization ADD COLUMN inventory TEXT DEFAULT NULL
-        `, (err) => {
-            if (err && !err.message.includes('duplicate column')) {
-                console.log('⚠️  Error adding inventory column (may already exist):', err.message);
-            }
-        });
+    // Tabla de recuperación de contraseña (códigos temporales)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS password_reset_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
 
-        // Migration: Add outfit column if it doesn't exist
-        db.run(`
-            ALTER TABLE robot_customization ADD COLUMN outfit TEXT DEFAULT 'none'
-        `, (err) => {
-            if (err && !err.message.includes('duplicate column')) {
-                console.log('⚠️  Error adding outfit column (may already exist):', err.message);
-            }
-        });
+    // Migration: Add inventory column if it doesn't exist
+    db.run(`
+        ALTER TABLE robot_customization ADD COLUMN inventory TEXT DEFAULT NULL
+    `, (err) => {
+        if (err && !err.message.includes('duplicate column')) {
+            console.log('⚠️  Error adding inventory column (may already exist):', err.message);
+        }
+    });
 
-        // Migration: Add robot_type column if it doesn't exist
-        db.run(`
-            ALTER TABLE users ADD COLUMN robot_type TEXT DEFAULT 'classic'
-        `, (err) => {
-            if (err && !err.message.includes('duplicate column')) {
-                console.log('⚠️  Error adding robot_type column (may already exist):', err.message);
-            }
-        });
+    // Migration: Add outfit column if it doesn't exist
+    db.run(`
+        ALTER TABLE robot_customization ADD COLUMN outfit TEXT DEFAULT 'none'
+    `, (err) => {
+        if (err && !err.message.includes('duplicate column')) {
+            console.log('⚠️  Error adding outfit column (may already exist):', err.message);
+        }
+    });
 
-        // Migration: Add unique index on streak_history (user_id, date) for ON CONFLICT
-        db.run(`
-            DELETE FROM streak_history WHERE id NOT IN (
-                SELECT MIN(id) FROM streak_history GROUP BY user_id, date
-            )
-        `);
+    // Migration: Add robot_type column if it doesn't exist
+    db.run(`
+        ALTER TABLE users ADD COLUMN robot_type TEXT DEFAULT 'classic'
+    `, (err) => {
+        if (err && !err.message.includes('duplicate column')) {
+            console.log('⚠️  Error adding robot_type column (may already exist):', err.message);
+        }
+    });
 
+    // Migration: Add unique index on streak_history (user_id, date) for ON CONFLICT
+    db.run(`
+        DELETE FROM streak_history WHERE id NOT IN (
+            SELECT MIN(id) FROM streak_history GROUP BY user_id, date
+        )
+    `, () => {
         db.run(`
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_streak_history_user_date
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_streak_history_user_date 
             ON streak_history(user_id, date)
         `, (err) => {
             if (err) {
                 console.log('⚠️  streak_history index:', err.message);
             }
         });
-
-        // Tabla de datos de batalla
-        db.run(`
-            CREATE TABLE IF NOT EXISTS battle_data (
-                user_id INTEGER PRIMARY KEY,
-                battle_inventory TEXT DEFAULT '{"weapons":[],"shields":[],"modules":[]}',
-                battle_equipment TEXT DEFAULT '{"weapon":null,"shield":null,"module":null}',
-                selected_moves TEXT DEFAULT '[]',
-                battle_wins INTEGER DEFAULT 0,
-                battle_losses INTEGER DEFAULT 0,
-                battle_rating INTEGER DEFAULT 1000,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `, () => {
-            console.log('✅ Tablas de base de datos inicializadas');
-            // Crear usuario admin cuando el esquema ya está listo
-            createAdminUser();
-        });
     });
+
+    console.log('✅ Tablas de base de datos inicializadas');
+
+    // Tabla de datos de batalla
+    db.run(`
+        CREATE TABLE IF NOT EXISTS battle_data (
+            user_id INTEGER PRIMARY KEY,
+            battle_inventory TEXT DEFAULT '{"weapons":[],"shields":[],"modules":[]}',
+            battle_equipment TEXT DEFAULT '{"weapon":null,"shield":null,"module":null}',
+            selected_moves TEXT DEFAULT '[]',
+            battle_wins INTEGER DEFAULT 0,
+            battle_losses INTEGER DEFAULT 0,
+            battle_rating INTEGER DEFAULT 1000,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
+    
+    // Crear usuario admin si no existe
+    createAdminUser();
 }
 
 async function createAdminUser() {
@@ -370,12 +411,172 @@ app.post('/api/auth/login', [
     });
 });
 
-// Verificar si token es válido (para persistencia de sesión)
-app.get('/api/auth/verify', authenticateToken, (req, res) => {
-    res.json({
-        message: 'Token válido',
-        user: { id: req.user.id, username: req.user.username }
+// ========== Recuperación de Contraseña ==========
+const RESET_CODE_TTL_MINUTES = 15;
+
+function hashResetCode(code) {
+    return crypto.createHash('sha256').update(String(code)).digest('hex');
+}
+
+function generateResetCode() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function sendPasswordResetEmail(to, username, code) {
+    const host = process.env.SMTP_HOST;
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || user;
+
+    if (!nodemailer || !host || !user || !pass || !from) {
+        return { sent: false, reason: 'smtp_not_configured' };
+    }
+
+    const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass }
     });
+
+    await transporter.sendMail({
+        from,
+        to,
+        subject: 'Beimax - Código para recuperar contraseña',
+        text: `Hola ${username}, tu código de recuperación es: ${code}. Vence en ${RESET_CODE_TTL_MINUTES} minutos.`,
+        html: `<p>Hola <strong>${username}</strong>,</p><p>Tu código de recuperación es:</p><h2 style="letter-spacing:2px;">${code}</h2><p>Vence en ${RESET_CODE_TTL_MINUTES} minutos.</p>`
+    });
+
+    return { sent: true };
+}
+
+app.post('/api/auth/forgot-password', [
+    body('identifier').trim().isLength({ min: 3 })
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Identificador inválido' });
+    }
+
+    const identifier = String(req.body.identifier || '').trim();
+    if (!identifier) {
+        return res.status(400).json({ error: 'Debes indicar usuario o email' });
+    }
+
+    db.get(
+        'SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1',
+        [identifier, identifier.toLowerCase()],
+        async (err, user) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error en el servidor' });
+            }
+
+            // Respuesta genérica para no filtrar usuarios existentes
+            const genericResponse = {
+                message: 'Si la cuenta existe, enviamos un código de recuperación.',
+                expiresInMinutes: RESET_CODE_TTL_MINUTES
+            };
+
+            if (!user) return res.json(genericResponse);
+
+            const code = generateResetCode();
+            const codeHash = hashResetCode(code);
+
+            db.run(
+                'UPDATE password_reset_codes SET used_at = datetime(\'now\') WHERE user_id = ? AND used_at IS NULL',
+                [user.id],
+                (updErr) => {
+                    if (updErr) {
+                        return res.status(500).json({ error: 'Error en el servidor' });
+                    }
+
+                    db.run(
+                        'INSERT INTO password_reset_codes (user_id, code_hash, expires_at) VALUES (?, ?, datetime(\'now\', ?))',
+                        [user.id, codeHash, `+${RESET_CODE_TTL_MINUTES} minutes`],
+                        async (insErr) => {
+                            if (insErr) {
+                                return res.status(500).json({ error: 'Error en el servidor' });
+                            }
+
+                            try {
+                                const mail = await sendPasswordResetEmail(user.email, user.username, code);
+                                if (mail.sent) {
+                                    return res.json({
+                                        ...genericResponse,
+                                        method: 'email'
+                                    });
+                                }
+                            } catch (mailErr) {
+                                console.error('Error enviando correo de recuperación:', mailErr.message);
+                            }
+
+                            console.log(`🔐 Código reset para ${user.username} (${user.email}): ${code}`);
+                            const payload = {
+                                ...genericResponse,
+                                method: 'code'
+                            };
+                            if (process.env.NODE_ENV !== 'production') {
+                                payload.devResetCode = code;
+                            }
+                            return res.json(payload);
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+app.post('/api/auth/reset-password', [
+    body('identifier').trim().isLength({ min: 3 }),
+    body('code').trim().isLength({ min: 4 }),
+    body('newPassword').isLength({ min: 6 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Datos inválidos para restablecer contraseña' });
+    }
+
+    const identifier = String(req.body.identifier || '').trim();
+    const code = String(req.body.code || '').trim();
+    const newPassword = String(req.body.newPassword || '');
+
+    db.get(
+        'SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1',
+        [identifier, identifier.toLowerCase()],
+        async (err, user) => {
+            if (err) return res.status(500).json({ error: 'Error en el servidor' });
+            if (!user) return res.status(400).json({ error: 'Código inválido o expirado' });
+
+            const codeHash = hashResetCode(code);
+            db.get(
+                `SELECT id FROM password_reset_codes
+                 WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > datetime('now')
+                 ORDER BY created_at DESC LIMIT 1`,
+                [user.id, codeHash],
+                async (codeErr, codeRow) => {
+                    if (codeErr) return res.status(500).json({ error: 'Error en el servidor' });
+                    if (!codeRow) return res.status(400).json({ error: 'Código inválido o expirado' });
+
+                    try {
+                        const hashedPassword = await bcrypt.hash(newPassword, 10);
+                        db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, user.id], (pwdErr) => {
+                            if (pwdErr) return res.status(500).json({ error: 'No se pudo actualizar la contraseña' });
+
+                            db.run(
+                                'UPDATE password_reset_codes SET used_at = datetime(\'now\') WHERE user_id = ? AND used_at IS NULL',
+                                [user.id],
+                                () => res.json({ message: 'Contraseña actualizada correctamente' })
+                            );
+                        });
+                    } catch (hashErr) {
+                        return res.status(500).json({ error: 'Error en el servidor' });
+                    }
+                }
+            );
+        }
+    );
 });
 
 // ========== Endpoints de Perfil de Usuario ==========
@@ -1089,11 +1290,7 @@ function ensureCerts() {
     }
 }
 
-// Usar http.createServer para poder adjuntar WebSocket al mismo puerto
-const http = require('http');
-const httpServer = http.createServer(app);
-
-httpServer.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
     const os = require('os');
     const nets = os.networkInterfaces();
     let localIP = 'No encontrada';
@@ -1111,378 +1308,16 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
     console.log(`✅ HTTP Local:  http://localhost:${PORT}`);
     console.log(`📱 HTTP Red:    http://${localIP}:${PORT}`);
-    console.log(`🎮 WebSocket:   ws://${localIP}:${PORT} (mismo puerto HTTP)`);
 
-    // ========== WebSocket Server — mismo puerto que HTTP ==========
-    // Adjuntado al httpServer para compartir puerto 3000 (sin puerto extra,
-    // sin reglas de firewall adicionales — funciona en LAN automáticamente)
-    const wss = new WebSocket.Server({ server: httpServer });
+    // ========== WebSocket Server para Batallas Online ==========
+    const WS_PORT = parseInt(PORT) + 1;
+    const wss = new WebSocket.Server({ port: WS_PORT });
     const battleQueue = [];
     const activeBattles = new Map();
-    const quizQueue = [];
-    const activeQuizMatches = new Map();
-
-    const QUIZ_ROUND_MS = 15000;
-    const QUIZ_ROULETTE_MS = 2200;
-    const QUIZ_TOTAL_ROUNDS = 6;
-    const QUIZ_CATEGORY_KEYS = ['kitchen', 'office', 'workshop', 'home'];
-    const QUIZ_LANGS = ['es', 'en', 'fr'];
-
-    const ENGLISH_DUEL_BANK = {
-        kitchen: {
-            label: 'Cocina',
-            words: [
-                { es: 'cuchara', fr: 'cuillere', en: 'spoon' },
-                { es: 'tenedor', fr: 'fourchette', en: 'fork' },
-                { es: 'cuchillo', fr: 'couteau', en: 'knife' },
-                { es: 'plato', fr: 'assiette', en: 'plate' },
-                { es: 'taza', fr: 'tasse', en: 'cup' },
-                { es: 'vaso', fr: 'verre', en: 'glass' },
-                { es: 'horno', fr: 'four', en: 'oven' },
-                { es: 'nevera', fr: 'refrigerateur', en: 'fridge' },
-                { es: 'sarten', fr: 'poele', en: 'pan' },
-                { es: 'olla', fr: 'marmite', en: 'pot' },
-                { es: 'sal', fr: 'sel', en: 'salt' },
-                { es: 'azucar', fr: 'sucre', en: 'sugar' }
-            ]
-        },
-        office: {
-            label: 'Oficina',
-            words: [
-                { es: 'escritorio', fr: 'bureau', en: 'desk' },
-                { es: 'silla', fr: 'chaise', en: 'chair' },
-                { es: 'teclado', fr: 'clavier', en: 'keyboard' },
-                { es: 'raton', fr: 'souris', en: 'mouse' },
-                { es: 'monitor', fr: 'ecran', en: 'monitor' },
-                { es: 'lapiz', fr: 'crayon', en: 'pencil' },
-                { es: 'boligrafo', fr: 'stylo', en: 'pen' },
-                { es: 'cuaderno', fr: 'cahier', en: 'notebook' },
-                { es: 'impresora', fr: 'imprimante', en: 'printer' },
-                { es: 'telefono', fr: 'telephone', en: 'phone' },
-                { es: 'carpeta', fr: 'dossier', en: 'folder' },
-                { es: 'agenda', fr: 'agenda', en: 'planner' }
-            ]
-        },
-        workshop: {
-            label: 'Taller',
-            words: [
-                { es: 'martillo', fr: 'marteau', en: 'hammer' },
-                { es: 'destornillador', fr: 'tournevis', en: 'screwdriver' },
-                { es: 'llave', fr: 'cle', en: 'wrench' },
-                { es: 'tornillo', fr: 'vis', en: 'screw' },
-                { es: 'tuerca', fr: 'ecrou', en: 'nut' },
-                { es: 'clavo', fr: 'clou', en: 'nail' },
-                { es: 'sierra', fr: 'scie', en: 'saw' },
-                { es: 'taladro', fr: 'perceuse', en: 'drill' },
-                { es: 'alicates', fr: 'pince', en: 'pliers' },
-                { es: 'cinta', fr: 'ruban', en: 'tape' },
-                { es: 'guantes', fr: 'gants', en: 'gloves' },
-                { es: 'casco', fr: 'casque', en: 'helmet' }
-            ]
-        },
-        home: {
-            label: 'Hogar',
-            words: [
-                { es: 'cama', fr: 'lit', en: 'bed' },
-                { es: 'almohada', fr: 'oreiller', en: 'pillow' },
-                { es: 'manta', fr: 'couverture', en: 'blanket' },
-                { es: 'puerta', fr: 'porte', en: 'door' },
-                { es: 'ventana', fr: 'fenetre', en: 'window' },
-                { es: 'lampara', fr: 'lampe', en: 'lamp' },
-                { es: 'mesa', fr: 'table', en: 'table' },
-                { es: 'sofa', fr: 'canape', en: 'sofa' },
-                { es: 'alfombra', fr: 'tapis', en: 'carpet' },
-                { es: 'espejo', fr: 'miroir', en: 'mirror' },
-                { es: 'toalla', fr: 'serviette', en: 'towel' },
-                { es: 'ducha', fr: 'douche', en: 'shower' }
-            ]
-        }
-    };
-
-    function safeSend(client, payload) {
-        if (client && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(payload));
-        }
-    }
-
-    function normalizeQuizText(str) {
-        return String(str || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim();
-    }
-
-    function randomFrom(arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
-    }
-
-    function buildQuizQuestionKey(entry, promptLang, answerLang) {
-        const prompt = normalizeQuizText(entry?.[promptLang] || '');
-        const answer = normalizeQuizText(entry?.[answerLang] || '');
-        return `${promptLang}|${answerLang}|${prompt}|${answer}`;
-    }
-
-    function normalizeQuizLang(lang, fallback = 'es') {
-        const normalized = String(lang || '').toLowerCase().trim();
-        return QUIZ_LANGS.includes(normalized) ? normalized : fallback;
-    }
-
-    function normalizeQuizCategoryKey(categoryKey) {
-        const normalized = String(categoryKey || '').toLowerCase().trim();
-        return QUIZ_CATEGORY_KEYS.includes(normalized) ? normalized : null;
-    }
-
-    function makeQuizQuestion(nativeLanguage, learningLanguage, categoryKey = null, rouletteLabel = null, usedQuestionKeys = null) {
-        const safeNative = normalizeQuizLang(nativeLanguage, 'es');
-        const safeLearning = normalizeQuizLang(learningLanguage, 'en');
-        const normalizedCategory = normalizeQuizCategoryKey(categoryKey);
-        const selectedCategory = normalizedCategory || randomFrom(QUIZ_CATEGORY_KEYS);
-        const categoryData = ENGLISH_DUEL_BANK[selectedCategory];
-        if (!categoryData || !Array.isArray(categoryData.words) || categoryData.words.length === 0) return null;
-
-        const candidates = categoryData.words.filter(entry => entry[safeNative] && entry[safeLearning]);
-        const basePool = candidates.length > 0 ? candidates : categoryData.words;
-        const unusedPool = usedQuestionKeys
-            ? basePool.filter(entry => !usedQuestionKeys.has(buildQuizQuestionKey(entry, safeNative, safeLearning)))
-            : basePool;
-
-        if (unusedPool.length === 0) return null;
-
-        const entry = randomFrom(unusedPool);
-
-        const promptLang = safeNative;
-        const answerLang = safeLearning;
-        const expectedRaw = entry[answerLang] || '';
-        const questionKey = buildQuizQuestionKey(entry, promptLang, answerLang);
-        if (usedQuestionKeys) usedQuestionKeys.add(questionKey);
-
-        const effectiveRouletteLabel = rouletteLabel || categoryData.label;
-        return {
-            categoryKey: selectedCategory,
-            categoryLabel: categoryData.label,
-            rouletteLabel: effectiveRouletteLabel,
-            promptLang,
-            prompt: entry[promptLang],
-            answerLang,
-            expected: normalizeQuizText(expectedRaw),
-            expectedRaw,
-            questionKey
-        };
-    }
-
-    function prepareNextQuizQuestion(match) {
-        let question = null;
-
-        if (match.categoryMode === 'roulette') {
-            const wheelOptions = [...QUIZ_CATEGORY_KEYS, 'free'];
-            for (let i = 0; i < 16 && !question; i++) {
-                const landed = randomFrom(wheelOptions);
-                if (landed === 'free') {
-                    const chosen = randomFrom(QUIZ_CATEGORY_KEYS);
-                    question = makeQuizQuestion(
-                        match.nativeLanguage,
-                        match.learningLanguage,
-                        chosen,
-                        'Libre',
-                        match.usedQuestionKeys
-                    );
-                } else {
-                    question = makeQuizQuestion(
-                        match.nativeLanguage,
-                        match.learningLanguage,
-                        landed,
-                        null,
-                        match.usedQuestionKeys
-                    );
-                }
-            }
-        } else {
-            question = makeQuizQuestion(
-                match.nativeLanguage,
-                match.learningLanguage,
-                match.fixedCategory,
-                null,
-                match.usedQuestionKeys
-            );
-        }
-
-        match.nextQuestion = question;
-    }
-
-    function startQuizRoulette(match) {
-        prepareNextQuizQuestion(match);
-        if (!match.nextQuestion) {
-            endQuizMatch(match.id);
-            return;
-        }
-
-        const categories = [...QUIZ_CATEGORY_KEYS.map(k => ENGLISH_DUEL_BANK[k].label), 'Libre'];
-        match.players.forEach(p => safeSend(p.ws, {
-            type: 'quiz_roulette',
-            round: match.round + 1,
-            totalRounds: match.totalRounds,
-            selectedCategory: match.nextQuestion.rouletteLabel,
-            categories,
-            durationMs: QUIZ_ROULETTE_MS
-        }));
-
-        clearTimeout(match.intermissionTimer);
-        match.intermissionTimer = setTimeout(() => {
-            startQuizRound(match);
-        }, QUIZ_ROULETTE_MS);
-    }
-
-    function startQuizRound(match) {
-        if (!activeQuizMatches.has(match.id)) return;
-
-        match.round += 1;
-        match.currentQuestion = match.nextQuestion || makeQuizQuestion(
-            match.nativeLanguage,
-            match.learningLanguage,
-            match.fixedCategory,
-            null,
-            match.usedQuestionKeys
-        );
-        if (!match.currentQuestion) {
-            endQuizMatch(match.id);
-            return;
-        }
-        match.answers = [null, null];
-        match.roundStartedAt = Date.now();
-        match.roundEndsAt = match.roundStartedAt + QUIZ_ROUND_MS;
-
-        const payload = {
-            type: 'quiz_round_start',
-            matchId: match.id,
-            round: match.round,
-            totalRounds: match.totalRounds,
-            category: match.currentQuestion.categoryLabel,
-            prompt: match.currentQuestion.prompt,
-            promptLang: match.currentQuestion.promptLang,
-            answerLang: match.currentQuestion.answerLang,
-            durationMs: QUIZ_ROUND_MS,
-            deadline: match.roundEndsAt
-        };
-
-        match.players.forEach(p => safeSend(p.ws, payload));
-
-        clearTimeout(match.roundTimer);
-        match.roundTimer = setTimeout(() => resolveQuizRound(match.id), QUIZ_ROUND_MS + 100);
-    }
-
-    function resolveQuizRound(matchId) {
-        if (!activeQuizMatches.has(matchId)) return;
-        const match = activeQuizMatches.get(matchId);
-
-        clearTimeout(match.roundTimer);
-        const now = Date.now();
-
-        const roundResults = [0, 1].map((idx) => {
-            const ans = match.answers[idx] || { answer: '', answeredAt: now };
-            const normalized = normalizeQuizText(ans.answer);
-            const correct = normalized && normalized === match.currentQuestion.expected;
-            const msLeft = Math.max(0, match.roundEndsAt - (ans.answeredAt || now));
-            const speedRatio = QUIZ_ROUND_MS > 0 ? (msLeft / QUIZ_ROUND_MS) : 0;
-            const basePoints = correct ? 120 : 0;
-            const speedBonus = correct ? Math.round(80 * speedRatio) : 0;
-            const points = basePoints + speedBonus;
-
-            match.scores[idx] += points;
-            if (correct) match.correctAnswers[idx] += 1;
-            else match.wrongAnswers[idx] += 1;
-
-            return {
-                answer: ans.answer || '',
-                correct,
-                points,
-                speedBonus,
-                totalScore: match.scores[idx]
-            };
-        });
-
-        match.players.forEach((player, idx) => {
-            const opponentIdx = idx === 0 ? 1 : 0;
-            safeSend(player.ws, {
-                type: 'quiz_round_result',
-                matchId: match.id,
-                round: match.round,
-                totalRounds: match.totalRounds,
-                expectedAnswer: match.currentQuestion.expectedRaw,
-                you: roundResults[idx],
-                opponent: {
-                    answer: roundResults[opponentIdx].answer,
-                    correct: roundResults[opponentIdx].correct,
-                    points: roundResults[opponentIdx].points,
-                    totalScore: roundResults[opponentIdx].totalScore
-                },
-                scores: match.scores
-            });
-        });
-
-        if (match.round >= match.totalRounds) {
-            endQuizMatch(match.id);
-        } else {
-            startQuizRoulette(match);
-        }
-    }
-
-    function endQuizMatch(matchId, disconnectedIndex = null) {
-        if (!activeQuizMatches.has(matchId)) return;
-        const match = activeQuizMatches.get(matchId);
-
-        clearTimeout(match.roundTimer);
-        clearTimeout(match.intermissionTimer);
-
-        let winnerIndex = null;
-        if (disconnectedIndex !== null) {
-            winnerIndex = disconnectedIndex === 0 ? 1 : 0;
-        } else if (match.scores[0] > match.scores[1]) {
-            winnerIndex = 0;
-        } else if (match.scores[1] > match.scores[0]) {
-            winnerIndex = 1;
-        }
-
-        const diff = Math.abs(match.scores[0] - match.scores[1]);
-        const winnerBonus = Math.min(40, Math.floor(diff / 40) * 5);
-        const coinsAward = [0, 0];
-        const xpAward = [0, 0];
-
-        if (winnerIndex === null) {
-            coinsAward[0] = 40;
-            coinsAward[1] = 40;
-            xpAward[0] = 95;
-            xpAward[1] = 95;
-        } else {
-            const loserIndex = winnerIndex === 0 ? 1 : 0;
-            coinsAward[winnerIndex] = 65 + winnerBonus;
-            coinsAward[loserIndex] = 25;
-            xpAward[winnerIndex] = 130;
-            xpAward[loserIndex] = disconnectedIndex === null ? 80 : 50;
-        }
-
-        match.players.forEach((p, idx) => {
-            safeSend(p.ws, {
-                type: 'quiz_match_end',
-                matchId: match.id,
-                winnerIndex,
-                youAreWinner: winnerIndex === idx,
-                scores: match.scores,
-                correctAnswers: match.correctAnswers,
-                wrongAnswers: match.wrongAnswers,
-                coinsAward: coinsAward[idx],
-                xpAward: xpAward[idx]
-            });
-            if (p.ws) p.ws.quizId = null;
-        });
-
-        activeQuizMatches.delete(matchId);
-    }
 
     wss.on('connection', (ws) => {
         ws.isAlive = true;
         ws.battleId = null;
-        ws.quizId = null;
 
         ws.on('pong', () => { ws.isAlive = true; });
 
@@ -1496,17 +1331,9 @@ httpServer.listen(PORT, '0.0.0.0', () => {
         });
 
         ws.on('close', () => {
-            // Remove from queue and cancel timeout
+            // Remove from queue
             const qIdx = battleQueue.findIndex(q => q.ws === ws);
-            if (qIdx >= 0) {
-                clearTimeout(battleQueue[qIdx].queueTimer);
-                battleQueue.splice(qIdx, 1);
-            }
-            const quizIdx = quizQueue.findIndex(q => q.ws === ws);
-            if (quizIdx >= 0) {
-                clearTimeout(quizQueue[quizIdx].queueTimer);
-                quizQueue.splice(quizIdx, 1);
-            }
+            if (qIdx >= 0) battleQueue.splice(qIdx, 1);
             // Handle disconnect from active battle
             if (ws.battleId && activeBattles.has(ws.battleId)) {
                 const battle = activeBattles.get(ws.battleId);
@@ -1515,17 +1342,6 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                     opponent.ws.send(JSON.stringify({ type: 'opponent_disconnected' }));
                 }
                 activeBattles.delete(ws.battleId);
-            }
-            if (ws.quizId && activeQuizMatches.has(ws.quizId)) {
-                const quizMatch = activeQuizMatches.get(ws.quizId);
-                const disconnectedIndex = quizMatch.players.findIndex(p => p.ws === ws);
-                const opponentIndex = disconnectedIndex === 0 ? 1 : 0;
-                const opponent = quizMatch.players[opponentIndex];
-                safeSend(opponent?.ws, {
-                    type: 'quiz_opponent_disconnected',
-                    message: 'Tu rival se desconecto. Ganas la partida.'
-                });
-                endQuizMatch(ws.quizId, disconnectedIndex);
             }
         });
     });
@@ -1553,26 +1369,10 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                 battleQueue.push(playerData);
                 ws.send(JSON.stringify({ type: 'queue_joined', position: battleQueue.length }));
 
-                // Timeout de cola: si después de 90s no hay match, notificar
-                playerData.queueTimer = setTimeout(() => {
-                    const idx = battleQueue.findIndex(q => q.ws === ws);
-                    if (idx >= 0) {
-                        battleQueue.splice(idx, 1);
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({
-                                type: 'queue_timeout',
-                                message: 'No se encontró oponente. Intenta de nuevo.'
-                            }));
-                        }
-                    }
-                }, 90000);
-
                 // Try matchmaking
                 if (battleQueue.length >= 2) {
                     const p1 = battleQueue.shift();
                     const p2 = battleQueue.shift();
-                    clearTimeout(p1.queueTimer);
-                    clearTimeout(p2.queueTimer);
                     const battleId = 'battle_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                     
                     p1.ws.battleId = battleId;
@@ -1582,11 +1382,10 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                         id: battleId,
                         players: [p1, p2],
                         currentTurn: 0,
-                        turnPhase: 'select',
+                        turnPhase: 'select', // select, resolve
                         moves: [null, null]
                     });
 
-                    // Envía al oponente: customization + moves reales (no los por defecto)
                     const startMsg = (pIndex) => JSON.stringify({
                         type: 'battle_start',
                         battleId,
@@ -1595,8 +1394,6 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                             name: pIndex === 0 ? p2.name : p1.name,
                             robotType: pIndex === 0 ? p2.robotType : p1.robotType,
                             level: pIndex === 0 ? p2.level : p1.level,
-                            moves: pIndex === 0 ? p2.moves : p1.moves,
-                            equipment: pIndex === 0 ? p2.equipment : p1.equipment,
                             customization: pIndex === 0 ? p2.customization : p1.customization
                         }
                     });
@@ -1608,10 +1405,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
             }
             case 'leave_queue': {
                 const idx = battleQueue.findIndex(q => q.ws === ws);
-                if (idx >= 0) {
-                    clearTimeout(battleQueue[idx].queueTimer);
-                    battleQueue.splice(idx, 1);
-                }
+                if (idx >= 0) battleQueue.splice(idx, 1);
                 ws.send(JSON.stringify({ type: 'queue_left' }));
                 break;
             }
@@ -1658,165 +1452,6 @@ httpServer.listen(PORT, '0.0.0.0', () => {
                 }
                 break;
             }
-            case 'join_quiz_queue': {
-                if (ws.quizId) return;
-
-                const inQueue = quizQueue.some(q => q.ws === ws);
-                if (inQueue) return;
-
-                const nativeLanguage = normalizeQuizLang(msg.nativeLanguage, 'es');
-                const learningLanguage = normalizeQuizLang(msg.learningLanguage, 'en');
-                if (nativeLanguage === learningLanguage) {
-                    safeSend(ws, {
-                        type: 'error',
-                        message: 'Selecciona idiomas diferentes para nativo y aprendizaje.'
-                    });
-                    return;
-                }
-
-                const requestedMode = String(msg.categoryMode || 'roulette').toLowerCase().trim();
-                const mode = requestedMode === 'roulette' ? 'roulette' : 'fixed';
-                const preferredCategory = normalizeQuizCategoryKey(msg.fixedCategory);
-                if (mode === 'fixed' && !preferredCategory) {
-                    safeSend(ws, {
-                        type: 'error',
-                        message: 'Selecciona una categoría válida para modo libre.'
-                    });
-                    return;
-                }
-
-                const matchKey = mode === 'roulette'
-                    ? `${nativeLanguage}|${learningLanguage}|roulette`
-                    : `${nativeLanguage}|${learningLanguage}|fixed:${preferredCategory}`;
-
-                const playerData = {
-                    ws,
-                    name: msg.name || 'Jugador',
-                    level: msg.level || 1,
-                    nativeLanguage,
-                    learningLanguage,
-                    categoryMode: mode,
-                    fixedCategory: preferredCategory,
-                    matchKey
-                };
-
-                quizQueue.push(playerData);
-                const positionInCompatibleQueue = quizQueue.filter(q => q.matchKey === matchKey).length;
-                safeSend(ws, { type: 'quiz_queue_joined', position: positionInCompatibleQueue });
-
-                playerData.queueTimer = setTimeout(() => {
-                    const idx = quizQueue.findIndex(q => q.ws === ws);
-                    if (idx >= 0) {
-                        quizQueue.splice(idx, 1);
-                        safeSend(ws, {
-                            type: 'quiz_queue_timeout',
-                            message: 'No se encontro rival para el duelo. Intenta de nuevo.'
-                        });
-                    }
-                }, 90000);
-
-                const myIdx = quizQueue.findIndex(q => q.ws === ws);
-                const oppIdx = quizQueue.findIndex((q, idx) => idx !== myIdx && q.matchKey === matchKey);
-
-                if (myIdx >= 0 && oppIdx >= 0) {
-                    const idxA = Math.max(myIdx, oppIdx);
-                    const idxB = Math.min(myIdx, oppIdx);
-                    const p1 = quizQueue[idxB];
-                    const p2 = quizQueue[idxA];
-                    quizQueue.splice(idxA, 1);
-                    quizQueue.splice(idxB, 1);
-                    clearTimeout(p1.queueTimer);
-                    clearTimeout(p2.queueTimer);
-
-                    const matchId = 'quiz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                    p1.ws.quizId = matchId;
-                    p2.ws.quizId = matchId;
-
-                    const match = {
-                        id: matchId,
-                        players: [p1, p2],
-                        round: 0,
-                        totalRounds: QUIZ_TOTAL_ROUNDS,
-                        scores: [0, 0],
-                        correctAnswers: [0, 0],
-                        wrongAnswers: [0, 0],
-                        answers: [null, null],
-                        currentQuestion: null,
-                        nextQuestion: null,
-                        nativeLanguage: p1.nativeLanguage,
-                        learningLanguage: p1.learningLanguage,
-                        categoryMode: p1.categoryMode,
-                        fixedCategory: p1.fixedCategory,
-                        usedQuestionKeys: new Set(),
-                        roundStartedAt: 0,
-                        roundEndsAt: 0,
-                        roundTimer: null,
-                        intermissionTimer: null
-                    };
-
-                    activeQuizMatches.set(matchId, match);
-
-                    safeSend(p1.ws, {
-                        type: 'quiz_match_found',
-                        matchId,
-                        playerIndex: 0,
-                        totalRounds: QUIZ_TOTAL_ROUNDS,
-                        nativeLanguage: p1.nativeLanguage,
-                        learningLanguage: p1.learningLanguage,
-                        categoryMode: p1.categoryMode,
-                        fixedCategory: p1.fixedCategory,
-                        opponent: { name: p2.name, level: p2.level }
-                    });
-
-                    safeSend(p2.ws, {
-                        type: 'quiz_match_found',
-                        matchId,
-                        playerIndex: 1,
-                        totalRounds: QUIZ_TOTAL_ROUNDS,
-                        nativeLanguage: p1.nativeLanguage,
-                        learningLanguage: p1.learningLanguage,
-                        categoryMode: p1.categoryMode,
-                        fixedCategory: p1.fixedCategory,
-                        opponent: { name: p1.name, level: p1.level }
-                    });
-
-                    startQuizRoulette(match);
-                }
-                break;
-            }
-            case 'leave_quiz_queue': {
-                const idx = quizQueue.findIndex(q => q.ws === ws);
-                if (idx >= 0) {
-                    clearTimeout(quizQueue[idx].queueTimer);
-                    quizQueue.splice(idx, 1);
-                }
-                safeSend(ws, { type: 'quiz_queue_left' });
-                break;
-            }
-            case 'quiz_answer': {
-                if (!ws.quizId || !activeQuizMatches.has(ws.quizId)) return;
-                const match = activeQuizMatches.get(ws.quizId);
-                const pIdx = match.players.findIndex(p => p.ws === ws);
-                if (pIdx < 0) return;
-
-                if (msg.round !== match.round) return;
-                if (match.answers[pIdx]) return;
-
-                match.answers[pIdx] = {
-                    answer: String(msg.answer || '').slice(0, 60),
-                    answeredAt: Date.now()
-                };
-
-                safeSend(ws, { type: 'quiz_answer_received' });
-
-                const oppIdx = pIdx === 0 ? 1 : 0;
-                safeSend(match.players[oppIdx]?.ws, { type: 'quiz_opponent_answered' });
-
-                if (match.answers[0] && match.answers[1]) {
-                    setTimeout(() => resolveQuizRound(match.id), 350);
-                }
-                break;
-            }
         }
     }
 
@@ -1831,7 +1466,8 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
     wss.on('close', () => clearInterval(heartbeat));
 
-    console.log(`⚔️  WebSocket Batallas: ws://localhost:${PORT} (mismo puerto HTTP)`);
+    console.log(`⚔️  WebSocket Batallas: ws://localhost:${WS_PORT}`);
+    console.log(`⚔️  WebSocket Red:      ws://${localIP}:${WS_PORT}`);
 
     // Try to start HTTPS server
     const certs = ensureCerts();

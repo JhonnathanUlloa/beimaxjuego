@@ -149,12 +149,23 @@ function getOutfitInfo(value) {
 
 function showRegisterForm() {
     document.getElementById('loginForm').style.display = 'none';
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    if (forgotForm) forgotForm.style.display = 'none';
     document.getElementById('registerForm').style.display = 'block';
 }
 
 function showLoginForm() {
     document.getElementById('registerForm').style.display = 'none';
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    if (forgotForm) forgotForm.style.display = 'none';
     document.getElementById('loginForm').style.display = 'block';
+}
+
+function showForgotPasswordForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    if (forgotForm) forgotForm.style.display = 'block';
 }
 
 const ROBOT_GENDER_MAP = {
@@ -302,10 +313,55 @@ async function handleRegister() {
     }
 }
 
+async function handleForgotPasswordRequest() {
+    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
+    if (!identifier) return showNotif('⚠️', 'Ingresa tu usuario o email');
+
+    try {
+        const res = await forgotPassword(identifier);
+        if (res?.method === 'email') {
+            showNotif('📧', 'Te enviamos un código por correo. Revisa tu bandeja y spam.');
+        } else {
+            let msg = 'Se generó un código de recuperación. Revisa la consola del backend.';
+            if (res?.devResetCode) msg += ` Código (dev): ${res.devResetCode}`;
+            showNotif('🔐', msg);
+        }
+    } catch (e) {
+        showNotif('❌', e.message || 'No se pudo solicitar recuperación');
+    }
+}
+
+async function handleResetPassword() {
+    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
+    const code = document.getElementById('forgotCode')?.value.trim();
+    const newPassword = document.getElementById('forgotNewPassword')?.value.trim();
+    const confirmPassword = document.getElementById('forgotConfirmPassword')?.value.trim();
+
+    if (!identifier || !code || !newPassword || !confirmPassword) {
+        return showNotif('⚠️', 'Completa todos los campos de recuperación');
+    }
+    if (newPassword.length < 6) {
+        return showNotif('⚠️', 'La nueva contraseña debe tener al menos 6 caracteres');
+    }
+    if (newPassword !== confirmPassword) {
+        return showNotif('⚠️', 'Las contraseñas no coinciden');
+    }
+
+    try {
+        await resetPassword(identifier, code, newPassword);
+        showNotif('✅', 'Contraseña actualizada. Ahora puedes iniciar sesión.');
+        showLoginForm();
+    } catch (e) {
+        showNotif('❌', e.message || 'No se pudo restablecer la contraseña');
+    }
+}
+
 function handleLogout() {
     gameState.token = null;
     gameState.user = null;
     localStorage.removeItem('beimax_token');
+    localStorage.removeItem('beimaxAuthToken');
+    sessionStorage.removeItem('beimax_token');
     showNavBar(false);
     showScreen('authScreen');
 }
@@ -2878,7 +2934,10 @@ function equipFromShop() {
 // ========== INIT ==========
 
 document.addEventListener('DOMContentLoaded', () => {
-    const savedToken = localStorage.getItem('beimax_token');
+    const savedToken =
+        localStorage.getItem('beimax_token') ||
+        sessionStorage.getItem('beimax_token') ||
+        localStorage.getItem('beimaxAuthToken');
     if (savedToken) {
         // Hay sesión guardada: verificar con getUserProfile (que sí lanza error en 401/403)
         gameState.token = savedToken;
@@ -2888,6 +2947,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {
                 // Token expirado o backend no disponible → mostrar login
                 localStorage.removeItem('beimax_token');
+                localStorage.removeItem('beimaxAuthToken');
+                sessionStorage.removeItem('beimax_token');
                 gameState.token = null;
                 showScreen('authScreen');
             });
@@ -2898,6 +2959,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('loginPassword')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') handleLogin();
+    });
+
+    document.getElementById('forgotConfirmPassword')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleResetPassword();
     });
 
     document.getElementById('imgAnswerName')?.addEventListener('keydown', e => {

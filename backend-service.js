@@ -10,6 +10,8 @@ const BACKEND_CONFIG = {
     endpoints: {
         register: '/api/auth/register',
         login: '/api/auth/login',
+        forgotPassword: '/api/auth/forgot-password',
+        resetPassword: '/api/auth/reset-password',
         profile: '/api/user/profile',
         updateLanguages: '/api/user/languages',
         updateCustomization: '/api/user/customization',
@@ -78,6 +80,48 @@ async function loginUser(username, password) {
         return data;
     } catch (error) {
         console.error('Error en login:', error);
+        throw error;
+    }
+}
+
+async function forgotPassword(identifier) {
+    try {
+        const response = await fetch(`${BACKEND_CONFIG.baseURL}${BACKEND_CONFIG.endpoints.forgotPassword}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ identifier })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'No se pudo iniciar recuperación de contraseña');
+        }
+        return data;
+    } catch (error) {
+        console.error('Error en forgotPassword:', error);
+        throw error;
+    }
+}
+
+async function resetPassword(identifier, code, newPassword) {
+    try {
+        const response = await fetch(`${BACKEND_CONFIG.baseURL}${BACKEND_CONFIG.endpoints.resetPassword}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ identifier, code, newPassword })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'No se pudo restablecer la contraseña');
+        }
+        return data;
+    } catch (error) {
+        console.error('Error en resetPassword:', error);
         throw error;
     }
 }

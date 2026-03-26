@@ -75,6 +75,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 });
 
 function initializeDatabase() {
+    db.serialize(() => {
     // Tabla de usuarios
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -216,8 +217,6 @@ function initializeDatabase() {
         });
     });
 
-    console.log('✅ Tablas de base de datos inicializadas');
-
     // Tabla de datos de batalla
     db.run(`
         CREATE TABLE IF NOT EXISTS battle_data (
@@ -230,10 +229,12 @@ function initializeDatabase() {
             battle_rating INTEGER DEFAULT 1000,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
-    `);
-    
-    // Crear usuario admin si no existe
-    createAdminUser();
+    `, () => {
+        console.log('✅ Tablas de base de datos inicializadas');
+        // Crear usuario admin cuando el esquema ya está listo
+        createAdminUser();
+    });
+    });
 }
 
 async function createAdminUser() {

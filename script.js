@@ -1902,7 +1902,7 @@ async function generateImageModeStudyPlan(total, wrong) {
             // Segundo intento con prompt mas corto para reducir rechazos en modelos free
             const shortPrompt = `Plan breve de estudio para ${gameState.currentCategory}, dificultad ${gameState.languageDifficulty}, aciertos ${gameState.imgScore}/${total}, errores ${wrong}. Dame exactamente 5 lineas numeradas 1-5 en espanol.`;
             const shortSystem = 'Tutor de idiomas. Respuesta breve y accionable, sin markdown.';
-            const secondTry = await chatWithAI(shortPrompt, shortSystem, { temperature: 0.1, max_tokens: 180 });
+            const secondTry = await chatWithAI(shortPrompt, shortSystem, { temperature: 0.0, max_tokens: 140 });
             appendAIPlanToImageResult(secondTry, 'IA real del servidor (reintento compacto)');
         } catch (e2) {
             const reason = e2?.message || e?.message || 'error desconocido';

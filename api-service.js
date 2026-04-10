@@ -308,8 +308,8 @@ async function chatWithAI(userMessage, systemPrompt, options = {}) {
             max_tokens: options.max_tokens ?? 320
         };
 
-        // Un reintento breve para errores transitorios del proveedor (502/504)
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        // Reintentos para errores transitorios del proveedor/gateway
+        for (let attempt = 1; attempt <= 3; attempt++) {
             const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.chat}`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
@@ -330,9 +330,15 @@ async function chatWithAI(userMessage, systemPrompt, options = {}) {
                 details = '';
             }
 
-            const isTransient = response.status === 502 || response.status === 504;
-            if (attempt < 2 && isTransient) {
-                await new Promise(r => setTimeout(r, 900));
+            const isTransient =
+                response.status === 429 ||
+                response.status === 502 ||
+                response.status === 503 ||
+                response.status === 504;
+
+            if (attempt < 3 && isTransient) {
+                const waitMs = attempt === 1 ? 1200 : 2600;
+                await new Promise(r => setTimeout(r, waitMs));
                 continue;
             }
 

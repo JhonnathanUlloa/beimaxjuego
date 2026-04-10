@@ -1864,13 +1864,15 @@ async function generateAIStudyPlan({ mode, total, correct, wrong, category, diff
     return await chatWithAI(userPrompt, systemPrompt);
 }
 
-function appendAIPlanToImageResult(planText) {
+function appendAIPlanToImageResult(planText, sourceLabel) {
     const detailsEl = document.getElementById('imgResultDetails');
     if (!detailsEl) return;
     const pretty = (planText || 'No se pudo generar el plan ahora. Intenta de nuevo.').replace(/\n/g, '<br>');
+    const source = sourceLabel || 'Origen no especificado';
     detailsEl.innerHTML += `
         <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.2)">
         <strong>AI Plan de estudio personalizado</strong><br>
+        <small style="opacity:.85">Fuente: ${source}</small><br>
         <div style="margin-top:6px;line-height:1.45">${pretty}</div>
     `;
 }
@@ -1889,7 +1891,7 @@ async function generateImageModeStudyPlan(total, wrong) {
             difficulty: gameState.languageDifficulty,
             mistakes: gameState.imgMistakes
         });
-        appendAIPlanToImageResult(planText);
+        appendAIPlanToImageResult(planText, 'IA real del servidor');
     } catch (e) {
         const fallback = [
             `1) Debilidad principal: vocabulario de ${categoryData[gameState.currentCategory]?.name?.[gameState.nativeLanguage] || gameState.currentCategory}.`,
@@ -1898,7 +1900,7 @@ async function generateImageModeStudyPlan(total, wrong) {
             '4) 2 ejercicios concretos: escribir 5 veces cada palabra y decirla en voz alta.',
             '5) Consejo de pronunciacion: habla lento, separando silabas y luego fluido.'
         ].join('<br>');
-        appendAIPlanToImageResult(fallback);
+        appendAIPlanToImageResult(fallback, 'Respaldo local (sin IA)');
     }
 }
 
@@ -1917,9 +1919,9 @@ async function generateCameraModeStudyPlan() {
             difficulty: gameState.languageDifficulty,
             mistakes: gameState.cameraMistakes
         });
-        alert(`Plan IA de practica\n\n${planText}`);
+        alert(`Plan IA de practica (IA real del servidor)\n\n${planText}`);
     } catch (e) {
-        // Si falla IA, no bloqueamos salida del modo camara
+        alert('Plan de practica de respaldo local (sin IA en ese intento).');
     }
 }
 

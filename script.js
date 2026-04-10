@@ -1872,12 +1872,10 @@ function appendAIPlanToImageResult(planText, sourceLabel, sourceReason) {
     if (!detailsEl) return;
     const pretty = (planText || 'No se pudo generar el plan ahora. Intenta de nuevo.').replace(/\n/g, '<br>');
     const source = sourceLabel || 'Origen no especificado';
-    const reason = sourceReason ? `<br><small style="opacity:.75">Detalle: ${sourceReason}</small>` : '';
     detailsEl.innerHTML += `
         <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.2)">
         <strong>AI Plan de estudio personalizado</strong><br>
         <small style="opacity:.85">Fuente: ${source}</small><br>
-        ${reason}
         <div style="margin-top:6px;line-height:1.45">${pretty}</div>
     `;
 }

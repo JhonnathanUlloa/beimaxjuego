@@ -302,19 +302,44 @@ async function chatWithAI(userMessage, systemPrompt, options = {}) {
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
         messages.push({ role: 'user', content: userMessage });
 
-        const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.chat}`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                messages,
-                temperature: options.temperature ?? 0.3,
-                max_tokens: options.max_tokens ?? 320
-            }),
-            signal: AbortSignal.timeout(API_CONFIG.timeout)
-        });
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-        const data = await response.json();
-        return data.content || '';
+        const payload = {
+            messages,
+            temperature: options.temperature ?? 0.3,
+            max_tokens: options.max_tokens ?? 320
+        };
+
+        // Un reintento breve para errores transitorios del proveedor (502/504)
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.chat}`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(API_CONFIG.timeout)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.content || '';
+            }
+
+            let details = '';
+            try {
+                const errJson = await response.json();
+                details = errJson?.details || errJson?.error || '';
+            } catch (_) {
+                details = '';
+            }
+
+            const isTransient = response.status === 502 || response.status === 504;
+            if (attempt < 2 && isTransient) {
+                await new Promise(r => setTimeout(r, 900));
+                continue;
+            }
+
+            throw new Error(`API Error: ${response.status}${details ? ` - ${details}` : ''}`);
+        }
+
+        throw new Error('API Error: sin respuesta');
     } catch (error) {
         console.error('Error en chatWithAI:', error);
         throw error;

@@ -1898,15 +1898,23 @@ async function generateImageModeStudyPlan(total, wrong) {
         });
         appendAIPlanToImageResult(planText, 'IA real del servidor');
     } catch (e) {
-        const reason = e?.message || 'error desconocido';
-        const fallback = [
-            `1) Debilidad principal: vocabulario de ${categoryData[gameState.currentCategory]?.name?.[gameState.nativeLanguage] || gameState.currentCategory}.`,
-            '2) Objetivo hoy (10 min): repasar 8 palabras con audio y escritura.',
-            `3) 3 palabras a practicar: ${(gameState.imgMistakes || []).slice(0, 3).map(m => m.expected).join(', ') || 'las que fallaste en la ronda'}.`,
-            '4) 2 ejercicios concretos: escribir 5 veces cada palabra y decirla en voz alta.',
-            '5) Consejo de pronunciacion: habla lento, separando silabas y luego fluido.'
-        ].join('<br>');
-        appendAIPlanToImageResult(fallback, 'Respaldo local (sin IA)', reason);
+        try {
+            // Segundo intento con prompt mas corto para reducir rechazos en modelos free
+            const shortPrompt = `Plan breve de estudio para ${gameState.currentCategory}, dificultad ${gameState.languageDifficulty}, aciertos ${gameState.imgScore}/${total}, errores ${wrong}. Dame exactamente 5 lineas numeradas 1-5 en espanol.`;
+            const shortSystem = 'Tutor de idiomas. Respuesta breve y accionable, sin markdown.';
+            const secondTry = await chatWithAI(shortPrompt, shortSystem, { temperature: 0.1, max_tokens: 180 });
+            appendAIPlanToImageResult(secondTry, 'IA real del servidor (reintento compacto)');
+        } catch (e2) {
+            const reason = e2?.message || e?.message || 'error desconocido';
+            const fallback = [
+                `1) Debilidad principal: vocabulario de ${categoryData[gameState.currentCategory]?.name?.[gameState.nativeLanguage] || gameState.currentCategory}.`,
+                '2) Objetivo hoy (10 min): repasar 8 palabras con audio y escritura.',
+                `3) 3 palabras a practicar: ${(gameState.imgMistakes || []).slice(0, 3).map(m => m.expected).join(', ') || 'las que fallaste en la ronda'}.`,
+                '4) 2 ejercicios concretos: escribir 5 veces cada palabra y decirla en voz alta.',
+                '5) Consejo de pronunciacion: habla lento, separando silabas y luego fluido.'
+            ].join('<br>');
+            appendAIPlanToImageResult(fallback, 'Respaldo local (sin IA)', reason);
+        }
     }
 }
 

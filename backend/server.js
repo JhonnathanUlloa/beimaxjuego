@@ -22,8 +22,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'beimax-secret-key-change-in-production';
 
-// ========== LM Studio / DeepSeek R1 Config ==========
-const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://172.20.10.4:1234';
+// ========== AI Provider Config (OpenRouter + LM Studio fallback) ==========
+const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://localhost:1234';
+const OPENROUTER_URL = process.env.OPENROUTER_URL || 'https://openrouter.ai/api/v1';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemma-3-4b-it:free';
+const OPENROUTER_FALLBACK_MODEL = process.env.OPENROUTER_FALLBACK_MODEL || 'google/gemma-4-26b-a4b-it:free';
+const OPENROUTER_MODEL_CANDIDATES = (process.env.OPENROUTER_MODEL_CANDIDATES || 'google/gemma-3-4b-it:free,google/gemma-4-26b-a4b-it:free,google/gemma-4-31b-it:free,google/gemma-3-12b-it:free,nvidia/nemotron-nano-9b-v2:free')
+    .split(',')
+    .map(m => m.trim())
+    .filter(Boolean);
+const OPENROUTER_SITE_URL = process.env.OPENROUTER_SITE_URL || '';
+const OPENROUTER_SITE_NAME = process.env.OPENROUTER_SITE_NAME || 'BeiMax';
+const AI_PROVIDER_MODE = (process.env.AI_PROVIDER || 'auto').toLowerCase();
 
 // Helper: Strip DeepSeek R1 <think> reasoning tags from response
 function stripThinkTags(text) {
@@ -33,6 +44,173 @@ function stripThinkTags(text) {
     // Remove unclosed <think> block (model ran out of tokens while thinking)
     cleaned = cleaned.replace(/<think>[\s\S]*/gi, '').trim();
     return cleaned;
+}
+
+function getActiveAIProvider() {
+    if (AI_PROVIDER_MODE === 'openrouter') return 'openrouter';
+    if (AI_PROVIDER_MODE === 'lmstudio') return 'lmstudio';
+    return OPENROUTER_API_KEY ? 'openrouter' : 'lmstudio';
+}
+
+function getOpenRouterHeaders() {
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`
+    };
+    if (OPENROUTER_SITE_URL) headers['HTTP-Referer'] = OPENROUTER_SITE_URL;
+    if (OPENROUTER_SITE_NAME) headers['X-OpenRouter-Title'] = OPENROUTER_SITE_NAME;
+    return headers;
+}
+
+async function callLmStudioChat(messages, { temperature = 0.7, max_tokens = 2048, timeoutMs = 90000 } = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(`${LM_STUDIO_URL}/v1/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages, temperature, max_tokens, stream: false }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`LM Studio ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+        const rawContent = data.choices?.[0]?.message?.content || '';
+        return {
+            content: stripThinkTags(rawContent),
+            usage: data.usage,
+            provider: 'lmstudio',
+            model: data.model || 'lmstudio-local'
+        };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function callOpenRouterChat(messages, { temperature = 0.7, max_tokens = 2048, timeoutMs = 90000, model } = {}) {
+    if (!OPENROUTER_API_KEY) {
+        throw new Error('OPENROUTER_API_KEY no está configurada');
+    }
+
+    const modelsToTry = [...new Set([
+        model,
+        OPENROUTER_MODEL,
+        OPENROUTER_FALLBACK_MODEL,
+        ...OPENROUTER_MODEL_CANDIDATES
+    ].filter(Boolean))];
+
+    let lastError = null;
+    for (const modelId of modelsToTry) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+                method: 'POST',
+                headers: getOpenRouterHeaders(),
+                body: JSON.stringify({
+                    model: modelId,
+                    messages,
+                    temperature,
+                    max_tokens,
+                    stream: false
+                }),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                lastError = new Error(`OpenRouter ${response.status} (${modelId}): ${errText}`);
+                continue;
+            }
+
+            const data = await response.json();
+            const rawContent = data.choices?.[0]?.message?.content || '';
+            return {
+                content: stripThinkTags(rawContent),
+                usage: data.usage,
+                provider: 'openrouter',
+                model: data.model || modelId
+            };
+        } catch (e) {
+            lastError = e;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    throw lastError || new Error('OpenRouter no devolvió respuesta');
+}
+
+async function callTextAI(messages, options = {}) {
+    const provider = options.provider || getActiveAIProvider();
+
+    if (provider === 'openrouter') {
+        try {
+            return await callOpenRouterChat(messages, options);
+        } catch (openRouterErr) {
+            // Fallback automático cuando OpenRouter falla
+            return await callLmStudioChat(messages, options);
+        }
+    }
+
+    if (provider === 'lmstudio') {
+        return await callLmStudioChat(messages, options);
+    }
+
+    throw new Error(`Proveedor IA no soportado: ${provider}`);
+}
+
+async function checkOpenRouterHealth() {
+    if (!OPENROUTER_API_KEY) {
+        return { ok: false, reason: 'OPENROUTER_API_KEY no configurada' };
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const response = await fetch(`${OPENROUTER_URL}/models`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}` },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+            return { ok: false, reason: `OpenRouter respondió ${response.status}` };
+        }
+
+        const data = await response.json();
+        const hasConfiguredModel = Array.isArray(data.data)
+            ? data.data.some(m => m.id === OPENROUTER_MODEL)
+            : false;
+        return {
+            ok: true,
+            modelConfigured: OPENROUTER_MODEL,
+            modelVisibleInCatalog: hasConfiguredModel
+        };
+    } catch (e) {
+        return { ok: false, reason: e.message };
+    }
+}
+
+async function checkLmStudioHealth() {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${LM_STUDIO_URL}/v1/models`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!response.ok) return { ok: false, reason: `LM Studio respondió ${response.status}` };
+        const data = await response.json();
+        return { ok: true, models: (data.data || []).map(m => m.id) };
+    } catch (e) {
+        return { ok: false, reason: e.message };
+    }
 }
 
 // Middleware
@@ -993,31 +1171,26 @@ app.post('/api/user/checkin', authenticateToken, (req, res) => {
     });
 });
 
-// ========== AI Proxy (LM Studio / DeepSeek R1) ==========
+// ========== AI Proxy (OpenRouter + LM Studio) ==========
 
 // Health check for LM Studio
 app.get('/api/ai/health', async (req, res) => {
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch(`${LM_STUDIO_URL}/v1/models`, {
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
-        if (response.ok) {
-            const data = await response.json();
-            const models = data.data || [];
-            res.json({ 
-                status: 'ok', 
-                models: models.map(m => m.id),
-                url: LM_STUDIO_URL
-            });
-        } else {
-            res.json({ status: 'error', message: `LM Studio respondió ${response.status}` });
-        }
-    } catch (e) {
-        res.json({ status: 'error', message: e.message });
-    }
+    const activeProvider = getActiveAIProvider();
+    const [openrouter, lmstudio] = await Promise.all([
+        checkOpenRouterHealth(),
+        checkLmStudioHealth()
+    ]);
+
+    const activeOk = activeProvider === 'openrouter' ? openrouter.ok : lmstudio.ok;
+
+    res.json({
+        status: activeOk ? 'ok' : 'error',
+        provider: activeProvider,
+        openrouter,
+        lmstudio,
+        configuredModel: OPENROUTER_MODEL,
+        fallbackModel: OPENROUTER_FALLBACK_MODEL
+    });
 });
 
 // Analyze image with AI (vision)
@@ -1146,40 +1319,24 @@ app.post('/api/ai/chat', authenticateToken, async (req, res) => {
     }
 
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000); // 90s for chat
-
-        const response = await fetch(`${LM_STUDIO_URL}/v1/chat/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages,
-                temperature: temperature ?? 0.7,
-                max_tokens: max_tokens ?? 2048,
-                stream: false
-            }),
-            signal: controller.signal
+        const ai = await callTextAI(messages, {
+            temperature: temperature ?? 0.7,
+            max_tokens: max_tokens ?? 2048,
+            timeoutMs: 90000
         });
 
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-            const errText = await response.text();
-            return res.status(502).json({ error: 'Error de LM Studio', details: errText });
-        }
-
-        const data = await response.json();
-        const rawContent = data.choices?.[0]?.message?.content || '';
         res.json({
-            content: stripThinkTags(rawContent),
-            usage: data.usage
+            content: ai.content,
+            usage: ai.usage,
+            provider: ai.provider,
+            model: ai.model
         });
     } catch (e) {
         console.error('Error en /api/ai/chat:', e.message);
         if (e.name === 'AbortError') {
             return res.status(504).json({ error: 'Timeout' });
         }
-        res.status(502).json({ error: 'No se pudo contactar LM Studio', details: e.message });
+        res.status(502).json({ error: 'No se pudo contactar proveedor de IA', details: e.message });
     }
 });
 
@@ -1190,49 +1347,32 @@ app.post('/api/ai/translate', authenticateToken, async (req, res) => {
     const langNames = { es: 'español', en: 'inglés', fr: 'francés' };
 
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-
-        const response = await fetch(`${LM_STUDIO_URL}/v1/chat/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages: [
-                    { 
-                        role: 'system', 
-                        content: 'Eres un traductor. Responde SOLO con JSON válido, sin texto adicional.' 
-                    },
-                    { 
-                        role: 'user', 
-                        content: `Traduce "${word}" de ${langNames[fromLang] || fromLang} a ${langNames[toLang] || toLang}. Responde con JSON: {"translation": "...", "pronunciation": "pronunciación aproximada en español", "phonetic": "/transcripción fonética/"}` 
-                    }
-                ],
-                temperature: 0.1,
-                max_tokens: 1024,
-                stream: false
-            }),
-            signal: controller.signal
+        const ai = await callTextAI([
+            {
+                role: 'system',
+                content: 'Eres un traductor. Responde SOLO con JSON válido, sin texto adicional.'
+            },
+            {
+                role: 'user',
+                content: `Traduce "${word}" de ${langNames[fromLang] || fromLang} a ${langNames[toLang] || toLang}. Responde con JSON: {"translation": "...", "pronunciation": "pronunciación aproximada en español", "phonetic": "/transcripción fonética/"}`
+            }
+        ], {
+            temperature: 0.1,
+            max_tokens: 1024,
+            timeoutMs: 30000
         });
 
-        clearTimeout(timeout);
-
-        if (!response.ok) {
-            return res.status(502).json({ error: 'Error de LM Studio' });
-        }
-
-        const data = await response.json();
-        const rawContent = data.choices?.[0]?.message?.content || '';
-        const content = stripThinkTags(rawContent);
+        const content = ai.content;
 
         try {
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { translation: word };
-            res.json(parsed);
+            res.json({ ...parsed, provider: ai.provider, model: ai.model });
         } catch {
-            res.json({ translation: content.trim(), pronunciation: '', phonetic: '' });
+            res.json({ translation: content.trim(), pronunciation: '', phonetic: '', provider: ai.provider, model: ai.model });
         }
     } catch (e) {
-        res.status(502).json({ error: 'No se pudo contactar LM Studio' });
+        res.status(502).json({ error: 'No se pudo contactar proveedor de IA', details: e.message });
     }
 });
 

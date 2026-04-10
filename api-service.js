@@ -2,9 +2,9 @@
 // BeiMax AI Service — Hybrid Architecture
 // ============================================
 // 1. COCO-SSD (TensorFlow.js) → Object detection in browser (vision)
-// 2. DeepSeek R1 (LM Studio)  → Translation, pronunciation, chat (text)
+// 2. OpenRouter / LM Studio   → Translation, pronunciation, chat (text)
 // ============================================
-// DeepSeek R1 es un modelo de TEXTO. No puede ver imágenes.
+// El proveedor de texto (OpenRouter/LM Studio) no reemplaza la visión local.
 // COCO-SSD (80 objetos COCO) corre en el navegador para detección visual.
 // ============================================
 
@@ -250,7 +250,7 @@ function matchDetectionToVocabulary(detections, expectedObject, category) {
 }
 
 // ============================================
-// DeepSeek R1 (via Backend Proxy) — Solo Texto
+// Proveedor de IA de texto (via Backend Proxy)
 // ============================================
 
 function getAuthHeaders() {
@@ -262,7 +262,7 @@ function getAuthHeaders() {
 }
 
 /**
- * Traduce una palabra usando DeepSeek R1
+ * Traduce una palabra usando el proveedor de IA configurado
  */
 async function translateWordAPI(word, fromLang, toLang) {
     try {
@@ -281,7 +281,7 @@ async function translateWordAPI(word, fromLang, toLang) {
 }
 
 /**
- * Chat con DeepSeek R1
+ * Chat con IA
  */
 async function chatWithAI(userMessage, systemPrompt) {
     try {
@@ -305,7 +305,7 @@ async function chatWithAI(userMessage, systemPrompt) {
 }
 
 /**
- * Obtiene pronunciación via DeepSeek R1
+ * Obtiene pronunciación via IA
  */
 async function getPronunciationAPI(word, language) {
     try {
@@ -339,7 +339,7 @@ async function getPronunciationAPI(word, language) {
 }
 
 /**
- * Verifica salud de LM Studio / DeepSeek R1
+ * Verifica salud del proveedor de IA del backend
  */
 async function checkAPIHealth() {
     try {
@@ -356,7 +356,7 @@ async function checkAPIHealth() {
 }
 
 // ============================================
-// Funciones Unificadas (COCO-SSD + DeepSeek)
+// Funciones Unificadas (COCO-SSD + IA de texto)
 // ============================================
 
 /**
@@ -423,7 +423,7 @@ async function apiValidateObject(source, expectedObject, category, useFallback =
 }
 
 /**
- * Traduce una palabra (DeepSeek R1 o datos locales)
+ * Traduce una palabra (IA o datos locales)
  */
 async function apiTranslateWord(word, fromLang, toLang, useFallback = true) {
     try {
@@ -436,13 +436,13 @@ async function apiTranslateWord(word, fromLang, toLang, useFallback = true) {
 }
 
 /**
- * Obtiene pronunciación (DeepSeek R1 o fallback local)
+ * Obtiene pronunciación (IA o fallback local)
  */
 async function apiGetPronunciation(word, language, useFallback = true) {
     try {
         if (apiAvailable) return await getPronunciationAPI(word, language);
     } catch (e) {
-        console.warn('DeepSeek pronunciation error:', e);
+        console.warn('AI pronunciation error:', e);
     }
     if (useFallback) return getFallbackResponse('pronunciation', word, language);
     throw new Error('Pronunciación fallida');
@@ -459,8 +459,8 @@ function handleAPIError(error) {
     if (error.message?.includes('Failed to fetch')) {
         return 'No se pudo conectar con el servidor.';
     }
-    if (error.message?.includes('502') || error.message?.includes('LM Studio')) {
-        return 'LM Studio no disponible. Verifica http://172.20.10.4:1234';
+    if (error.message?.includes('502') || error.message?.includes('LM Studio') || error.message?.includes('OpenRouter')) {
+        return 'Proveedor de IA no disponible. Verifica backend/.env (OpenRouter o LM Studio).';
     }
     return 'Error inesperado. Intenta de nuevo.';
 }
@@ -526,7 +526,7 @@ async function initializeAPI() {
     // 1. Cargar COCO-SSD para detección de objetos por cámara
     loadCocoModel();
 
-    // 2. Verificar DeepSeek R1 para traducciones/chat
+    // 2. Verificar proveedor de IA para traducciones/chat
     try {
         const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.aiHealth}`, {
             signal: AbortSignal.timeout(5000)
@@ -534,7 +534,9 @@ async function initializeAPI() {
         if (response.ok) {
             const data = await response.json();
             apiAvailable = data.status === 'ok';
-            aiModels = data.models || [];
+            aiModels = data.openrouter?.ok
+                ? [data.configuredModel, data.fallbackModel].filter(Boolean)
+                : (data.lmstudio?.models || []);
         }
     } catch {
         apiAvailable = false;
@@ -543,7 +545,7 @@ async function initializeAPI() {
     return apiAvailable;
 }
 
-// Re-check DeepSeek R1 cada 30s
+// Re-check de salud IA cada 30s
 setInterval(async () => {
     apiAvailable = await checkAPIHealth();
 }, 30000);

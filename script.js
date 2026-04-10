@@ -37,6 +37,11 @@ const gameState = {
     // Study mode state
     studyWords: [],
     studyIndex: 0,
+    // AI coaching state
+    imgMistakes: [],
+    cameraAttempts: 0,
+    cameraCorrect: 0,
+    cameraMistakes: [],
     // Camera mode
     cameraStream: null,
     mode1Score: 0,
@@ -1638,6 +1643,7 @@ function startImageMode() {
     gameState.imgScore = 0;
     gameState.imgLives = 3;
     gameState.imgCoins = 0;
+    gameState.imgMistakes = [];
 
     showScreen('imageModeScreen');
     document.getElementById('imgTotal').textContent = gameState.imgWords.length;
@@ -1705,6 +1711,12 @@ function timerExpired() {
     const learning = s.learningLanguage;
 
     s.imgLives--;
+    s.imgMistakes.push({
+        native: item[s.nativeLanguage],
+        expected: item[learning],
+        user: '(sin respuesta)',
+        reason: 'tiempo'
+    });
 
     let details = `<strong>⏰ ¡Se acabó el tiempo!</strong><br>`;
     details += `<strong>Palabra correcta:</strong> ${item[learning]}<br>`;
@@ -1826,6 +1838,12 @@ function checkImageAnswer() {
         imageRobotSpeak(item, true);
     } else {
         s.imgLives--;
+        s.imgMistakes.push({
+            native: item[s.nativeLanguage],
+            expected: item[learning],
+            user: userWord || '(vacio)',
+            reason: 'incorrecta'
+        });
         resultIcon = '❌'; resultText = 'Incorrecto'; resultClass = 'result-wrong';
         showFloatingPoints(-1, false);
 
@@ -1887,6 +1905,80 @@ function nextImageQuestion() {
     showImageQuestion();
 }
 
+async function generateAIStudyPlan({ mode, total, correct, wrong, category, difficulty, mistakes }) {
+    if (typeof chatWithAI !== 'function') {
+        throw new Error('chatWithAI no disponible');
+    }
+
+    const safeMistakes = (mistakes || []).slice(0, 10).map(m => ({
+        native: m.native || '', expected: m.expected || '', user: m.user || '', reason: m.reason || ''
+    }));
+
+    const systemPrompt = 'Eres tutor de idiomas para ninos. Responde en espanol, breve y accionable. Sin markdown.';
+    const userPrompt = `Genera un mini plan de estudio personalizado para hoy con este desempeno:\n- modo: ${mode}\n- categoria: ${category}\n- dificultad: ${difficulty}\n- aciertos: ${correct}/${total}\n- errores: ${wrong}\n- errores concretos: ${JSON.stringify(safeMistakes)}\n\nFormato estricto:\n1) Debilidad principal: ...\n2) Objetivo hoy (10 min): ...\n3) 3 palabras a practicar: ...\n4) 2 ejercicios concretos: ...\n5) Consejo de pronunciacion: ...`;
+
+    return await chatWithAI(userPrompt, systemPrompt);
+}
+
+function appendAIPlanToImageResult(planText) {
+    const detailsEl = document.getElementById('imgResultDetails');
+    if (!detailsEl) return;
+    const pretty = (planText || 'No se pudo generar el plan ahora. Intenta de nuevo.').replace(/\n/g, '<br>');
+    detailsEl.innerHTML += `
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.2)">
+        <strong>AI Plan de estudio personalizado</strong><br>
+        <div style="margin-top:6px;line-height:1.45">${pretty}</div>
+    `;
+}
+
+async function generateImageModeStudyPlan(total, wrong) {
+    const detailsEl = document.getElementById('imgResultDetails');
+    if (detailsEl) detailsEl.innerHTML += '<br><br><em>Generando plan de estudio IA...</em>';
+
+    try {
+        const planText = await generateAIStudyPlan({
+            mode: 'image',
+            total,
+            correct: gameState.imgScore,
+            wrong,
+            category: gameState.currentCategory,
+            difficulty: gameState.languageDifficulty,
+            mistakes: gameState.imgMistakes
+        });
+        appendAIPlanToImageResult(planText);
+    } catch (e) {
+        const fallback = [
+            `1) Debilidad principal: vocabulario de ${categoryData[gameState.currentCategory]?.name?.[gameState.nativeLanguage] || gameState.currentCategory}.`,
+            '2) Objetivo hoy (10 min): repasar 8 palabras con audio y escritura.',
+            `3) 3 palabras a practicar: ${(gameState.imgMistakes || []).slice(0, 3).map(m => m.expected).join(', ') || 'las que fallaste en la ronda'}.`,
+            '4) 2 ejercicios concretos: escribir 5 veces cada palabra y decirla en voz alta.',
+            '5) Consejo de pronunciacion: habla lento, separando silabas y luego fluido.'
+        ].join('<br>');
+        appendAIPlanToImageResult(fallback);
+    }
+}
+
+async function generateCameraModeStudyPlan() {
+    const total = gameState.cameraAttempts || 0;
+    if (total <= 0) return;
+
+    const wrong = Math.max(0, total - (gameState.cameraCorrect || 0));
+    try {
+        const planText = await generateAIStudyPlan({
+            mode: 'camera',
+            total,
+            correct: gameState.cameraCorrect || 0,
+            wrong,
+            category: gameState.currentCategory,
+            difficulty: gameState.languageDifficulty,
+            mistakes: gameState.cameraMistakes
+        });
+        alert(`Plan IA de practica\n\n${planText}`);
+    } catch (e) {
+        // Si falla IA, no bloqueamos salida del modo camara
+    }
+}
+
 function endImageMode() {
     stopTimer();
     if (gameState.imgAutoAdvance) {
@@ -1913,6 +2005,7 @@ function endImageMode() {
     document.querySelector('.timer-bar-wrapper').style.display = 'none';
 
     const pct = Math.round((s.imgScore / total) * 100);
+    const wrong = Math.max(0, total - s.imgScore);
     let emoji = '🏆';
     if (pct < 30) emoji = '😢';
     else if (pct < 60) emoji = '😊';
@@ -1941,6 +2034,9 @@ function endImageMode() {
     };
 
     document.getElementById('imgProgressFill').style.width = '100%';
+
+    // Plan de estudio IA basado en errores de la ronda
+    generateImageModeStudyPlan(total, wrong);
 }
 
 function exitImageMode() {
@@ -2033,6 +2129,9 @@ async function startGameMode1() {
         });
 
         gameState.mode1Score = 0;
+        gameState.cameraAttempts = 0;
+        gameState.cameraCorrect = 0;
+        gameState.cameraMistakes = [];
         document.getElementById('scoreMode1').textContent = '0';
         document.getElementById('coinsAmount3').textContent = gameState.coins;
         document.getElementById('cameraStatus').textContent = '';
@@ -2128,6 +2227,7 @@ async function captureMode1() {
     const resultEl = document.getElementById('resultMode1');
     const captureBtn = document.getElementById('captureBtn');
     captureBtn.disabled = true;
+    gameState.cameraAttempts++;
 
     // Robot: estado pensando
     setCameraRobotState('robot-thinking');
@@ -2150,6 +2250,7 @@ async function captureMode1() {
             resultEl.style.color = '#22c55e';
             resultEl.innerHTML = `✅ ¡Correcto! <strong>${detected}</strong>${conf} (+${rewardCfg.cameraCoins} 🪙 | +${rewardCfg.cameraXp} XP)`;
             gameState.mode1Score++;
+            gameState.cameraCorrect++;
             gameState.coins += rewardCfg.cameraCoins;
             addExperience(rewardCfg.cameraXp);
             showCameraStatus('✅ ¡Objeto detectado por COCO-SSD!', 'success');
@@ -2162,6 +2263,12 @@ async function captureMode1() {
             robotSpeakResult(matchedItem, true);
         } else {
             const detected = result.detectedObject || 'nada';
+            gameState.cameraMistakes.push({
+                native: gameState.requestedObj?.[gameState.nativeLanguage] || '',
+                expected: gameState.requestedObj?.[gameState.learningLanguage] || '',
+                user: detected,
+                reason: 'deteccion distinta'
+            });
             resultEl.style.display = 'block';
             resultEl.style.background = 'rgba(239,68,68,0.15)';
             resultEl.style.color = '#ef4444';
@@ -2214,7 +2321,9 @@ function skipObject() {
     requestNewObject();
 }
 
-function exitGame() {
+async function exitGame() {
+    await generateCameraModeStudyPlan();
+
     if (gameState.cameraStream) {
         gameState.cameraStream.getTracks().forEach(t => t.stop());
         gameState.cameraStream = null;

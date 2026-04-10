@@ -254,7 +254,20 @@ function matchDetectionToVocabulary(detections, expectedObject, category) {
 // ============================================
 
 function getAuthHeaders() {
-    const token = gameState?.token;
+    let token = null;
+    try {
+        if (typeof gameState !== 'undefined' && gameState?.token) {
+            token = gameState.token;
+        }
+    } catch (_) {
+        // ignore
+    }
+    if (!token) {
+        token = localStorage.getItem('beimax_token') ||
+            localStorage.getItem('beimaxAuthToken') ||
+            sessionStorage.getItem('beimax_token') ||
+            sessionStorage.getItem('beimaxAuthToken');
+    }
     return {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -283,7 +296,7 @@ async function translateWordAPI(word, fromLang, toLang) {
 /**
  * Chat con IA
  */
-async function chatWithAI(userMessage, systemPrompt) {
+async function chatWithAI(userMessage, systemPrompt, options = {}) {
     try {
         const messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -292,7 +305,11 @@ async function chatWithAI(userMessage, systemPrompt) {
         const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.chat}`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ messages }),
+            body: JSON.stringify({
+                messages,
+                temperature: options.temperature ?? 0.3,
+                max_tokens: options.max_tokens ?? 320
+            }),
             signal: AbortSignal.timeout(API_CONFIG.timeout)
         });
         if (!response.ok) throw new Error(`API Error: ${response.status}`);

@@ -1861,18 +1861,23 @@ async function generateAIStudyPlan({ mode, total, correct, wrong, category, diff
     const systemPrompt = 'Eres tutor de idiomas para ninos. Responde en espanol, breve y accionable. Sin markdown.';
     const userPrompt = `Genera un mini plan de estudio personalizado para hoy con este desempeno:\n- modo: ${mode}\n- categoria: ${category}\n- dificultad: ${difficulty}\n- aciertos: ${correct}/${total}\n- errores: ${wrong}\n- errores concretos: ${JSON.stringify(safeMistakes)}\n\nFormato estricto:\n1) Debilidad principal: ...\n2) Objetivo hoy (10 min): ...\n3) 3 palabras a practicar: ...\n4) 2 ejercicios concretos: ...\n5) Consejo de pronunciacion: ...`;
 
-    return await chatWithAI(userPrompt, systemPrompt);
+    return await chatWithAI(userPrompt, systemPrompt, {
+        temperature: 0.2,
+        max_tokens: 280
+    });
 }
 
-function appendAIPlanToImageResult(planText, sourceLabel) {
+function appendAIPlanToImageResult(planText, sourceLabel, sourceReason) {
     const detailsEl = document.getElementById('imgResultDetails');
     if (!detailsEl) return;
     const pretty = (planText || 'No se pudo generar el plan ahora. Intenta de nuevo.').replace(/\n/g, '<br>');
     const source = sourceLabel || 'Origen no especificado';
+    const reason = sourceReason ? `<br><small style="opacity:.75">Detalle: ${sourceReason}</small>` : '';
     detailsEl.innerHTML += `
         <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.2)">
         <strong>AI Plan de estudio personalizado</strong><br>
         <small style="opacity:.85">Fuente: ${source}</small><br>
+        ${reason}
         <div style="margin-top:6px;line-height:1.45">${pretty}</div>
     `;
 }
@@ -1893,6 +1898,7 @@ async function generateImageModeStudyPlan(total, wrong) {
         });
         appendAIPlanToImageResult(planText, 'IA real del servidor');
     } catch (e) {
+        const reason = e?.message || 'error desconocido';
         const fallback = [
             `1) Debilidad principal: vocabulario de ${categoryData[gameState.currentCategory]?.name?.[gameState.nativeLanguage] || gameState.currentCategory}.`,
             '2) Objetivo hoy (10 min): repasar 8 palabras con audio y escritura.',
@@ -1900,7 +1906,7 @@ async function generateImageModeStudyPlan(total, wrong) {
             '4) 2 ejercicios concretos: escribir 5 veces cada palabra y decirla en voz alta.',
             '5) Consejo de pronunciacion: habla lento, separando silabas y luego fluido.'
         ].join('<br>');
-        appendAIPlanToImageResult(fallback, 'Respaldo local (sin IA)');
+        appendAIPlanToImageResult(fallback, 'Respaldo local (sin IA)', reason);
     }
 }
 
